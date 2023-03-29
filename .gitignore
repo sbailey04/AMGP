@@ -129,4 +129,7 @@ dmypy.json
 .pyre/
 
 # Created maps
-.png
+*.png
+
+# Pycache nonsense
+__pycache__/
