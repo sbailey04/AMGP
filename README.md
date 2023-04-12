@@ -48,8 +48,8 @@ def factors():
 # factors are any factors that AMGP automatically detected from the input, found in your module's getFactors()
 # values are the full set of input conditions given when the program was run
 def Retrieve(Time: Time, list: factors, dict: values):
-  # Whatever the heck the module does.
-  return partialPlotsList # appends to panel.plots as a return. In the future, there will be the option to have modules that DON'T depend on this function
+  # Whatever the module does.
+  return partialPlotsList # appends to panel.plots as a return.
 
 
 # A module of type 2 or 3 must also have:
