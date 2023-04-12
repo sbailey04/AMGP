@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #             Utilities Module                 #
 #            Author: Sam Bailey                #
-#        Last Revised: Mar 28, 2023            #
+#        Last Revised: Apr 12, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -13,10 +13,23 @@
 from datetime import datetime, timedelta
 import math
 import sys
+import os
+import contextlib
+from PIL import Image as PImage
+from PIL import ImageDraw, ImageFont, ImageFilter
+
+#----------------- AMGP IMPORTS -------------------#
+
+
 
 #------------------ END IMPORTS -------------------#
 
 #--------------- START DEFINITIONS ----------------#
+
+def info():
+    return {'name':"AMGP_UTIL",
+            'priority':0,
+            'type':0}
 
 class Time(object):
     def __init__(self, plotType, Date, currentTime, timeMode, convMode):
@@ -58,6 +71,17 @@ class Time(object):
             givenTime = datetime(currentTime.year, currentTime.month, currentTime.day, int(splitDate[1]))
         else:
             givenTime = datetime(int(splitDate[0]), int(splitDate[1]), int(splitDate[2]), int(splitDate[3]))
+            
+        recentness = currentTime - givenTime
+        if recentness < timedelta(hours=3):
+            flag = 1
+            flag2 = 1
+        elif recentness < timedelta(hours=6):
+            flag = 0
+            flag2 = 1
+        else:
+            flag = 0
+            flag2 = 0
            
         
         if not rec:
@@ -67,10 +91,10 @@ class Time(object):
                 print("<warning> The date you entered is out of range for gridded data.")
             if (givenTime < datetime(2003, 1, 23)):
                 print("<warning> The date you entered is out of range for convective outlooks.")
-            if ((givenTime - currentTime) > timedelta(days=13)):
+            if ((recentness) > timedelta(days=13)):
                 print("<warning> The date you entered is out of range for satelite scans.")
         
-        if timeMode == 'raw':
+        if (timeMode == 'raw') or (timeFormat == None):
             self.category = "raw"
             self.time = givenTime
             # This is basically only good for satelite data when "recent" is used.
@@ -82,7 +106,7 @@ class Time(object):
                     self.threetime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                     break
             for hour in [18, 12, 6, 0]:
-                if givenTime.hour >= hour + 6:
+                if givenTime.hour >= hour + 6 * flag2:
                     Hour = hour
                     self.sixtime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                     break
@@ -90,7 +114,7 @@ class Time(object):
                 Hour = 18
                 self.sixtime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             for hour in [12, 0]:
-                if givenTime.hour >= hour + 3:
+                if givenTime.hour >= hour + 3 * flag:
                     Hour = hour
                     self.twelvetime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                     break
@@ -102,13 +126,13 @@ class Time(object):
                 self.time = datetime(givenTime.year, givenTime.month, givenTime.day, 0)
             elif timeFormat == 3:
                 for hour in [12, 0]:
-                    if givenTime.hour >= hour + 3:
+                    if givenTime.hour >= hour + 3 * flag:
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
             elif timeFormat == 2:
                 for hour in [18, 12, 6, 0]:
-                    if givenTime.hour >= hour + 6:
+                    if givenTime.hour >= hour + 6 * flag2:
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
@@ -136,7 +160,7 @@ class Time(object):
                         break
             elif timeFormat == 2:
                 for hour in [18, 12, 6, 0]:
-                    if givenTime.hour >= hour + 6:
+                    if givenTime.hour >= hour + 6 * flag2:
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
@@ -145,7 +169,7 @@ class Time(object):
                     self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             elif timeFormat == 3:
                 for hour in [12, 0]:
-                    if givenTime.hour >= hour + 3:
+                    if givenTime.hour >= hour + 3 * flag:
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
@@ -274,6 +298,8 @@ class Time(object):
         
         self.timeformat = timeFormat
         self.convformat = convFormat
+        
+        self.now = currentTime
                 
         #elif convMode == "auto":
         #    if convFormat == 5:
@@ -332,3 +358,38 @@ class Levels(object):
 
 def GetLevel(lvlstring):
     return Levels(lvlstring)
+
+def setTime():
+    currentTime = datetime.utcnow()
+    return currentTime
+    
+def getTime():
+    currentTime = datetime.utcnow()
+    print(f"<time> It is currently {currentTime}Z")
+    return currentTime
+
+def ClearTemp():
+    dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+    for subPath in os.listdir(f"{dr}/Temp"):
+        if os.path.isdir(f"{dr}/Temp/{subPath}"):
+            ClearTemp(f"{dr}/Temp/{subPath}")
+            os.rmdir(f"{dr}/Temp/{subPath}")
+        else:
+            with contextlib.suppress(FileNotFoundError):
+                os.remove(f"{dr}/Temp/{subPath}")
+
+def Watermark(save, version):
+    wid, hei = save.size
+    if wid > hei:
+        sz = (int(hei * 0.8), int(hei * 0.8))
+    if hei > wid:
+        sz = (int(wid * 0.8), int(wid * 0.8))
+    sz1, sz2 = sz
+    dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "")
+    wm = PImage.open(f'{dr}/Resources/logo.png')
+    wm = wm.convert('RGBA').resize(sz)
+    wm.putalpha(int(0.1*255))
+    left = int((wid-sz1) / 2)
+    top = int((hei-sz1) / 2)
+    save.paste(wm, (left, top), wm)
+    return save

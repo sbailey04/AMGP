@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #         Convective Outlooks Module           #
 #            Author: Sam Bailey                #
-#        Last Revised: Mar 28, 2023            #
+#        Last Revised: Apr 07, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -17,6 +17,11 @@ from metpy.plots import PlotGeometry
 
 #--------------- START DEFINITIONS ----------------#
 
+def info():
+    return {'name':"AMGP_CONV",
+            'priority':4,
+            'type':1}
+
 # Day1 at 0100, 1200, 1300, 1630, 2000
 # Day2 at 0600, 1730
 # Day3 at 0730
@@ -29,14 +34,15 @@ def getFactors():
             'day5':12,
             'day6':12,
             'day7':12,
-            'day8':12}
+            'day8':12,
+            'conv_fill':-1}
 
 def factors():
     print("<factors_conv> 'day1' - The Categorical Outlook for day 1 issued on the given date. Issued at 0100Z, 1200Z, 1300Z, 1630Z, and 2000Z")
     print("<factors_conv> 'day2' - The Categorical Outlook for day 2 issued on the given date. Issued at 0600Z and 1730Z")
     print("<factors_conv> 'day3' - The Categorical Outlook for day 3 issued on the given date. Issued at 0730Z")
     print("<factors_conv> 'day#' - The Probabalistic Outlook for day 4 to 8 issued on the given date. Issued around 9Z")
-    print("<factors_conv> '*_fill' - A modifier on any convective product that will fill the area with color, instead of leaving it hollow.")
+    print("<factors_conv> 'conv_fill' - A modifier on any convective product that will fill the area with color, instead of leaving it hollow.")
 
 def Retrieve(Time, factors, values):
     
@@ -46,7 +52,7 @@ def Retrieve(Time, factors, values):
         d1conv = PlotGeometry()
         d1otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/outlook/archive/{Time.c1time:%Y}/day1otlk_{Time.c1time:%Y%m%d}_{Time.c1time:%H%M}_cat.lyr.geojson')
         d1conv.geometry = d1otlk['geometry']
-        if 'day1_fill' in factors:
+        if 'conv_fill' in factors:
             d1conv.fill = d1otlk['fill']
         else:
             d1conv.fill = None
@@ -59,7 +65,7 @@ def Retrieve(Time, factors, values):
         d2conv = PlotGeometry()
         d2otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/outlook/archive/{Time.c2time:%Y}/day2otlk_{Time.c2time:%Y%m%d}_{Time.c2time:%H%M}_cat.lyr.geojson')
         d2conv.geometry = d2otlk['geometry']
-        if 'day2_fill' in factors:
+        if 'conv_fill' in factors:
             d2conv.fill = d2otlk['fill']
         else:
             d2conv.fill = None
@@ -72,7 +78,7 @@ def Retrieve(Time, factors, values):
         d3conv = PlotGeometry()
         d3otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/outlook/archive/{Time.c3time:%Y}/day3otlk_{Time.c3time:%Y%m%d}_{Time.c3time:%H%M}_cat.lyr.geojson')
         d3conv.geometry = d3otlk['geometry']
-        if 'day3_fill' in factors:
+        if 'conv_fill' in factors:
             d3conv.fill = d3otlk['fill']
         else:
             d3conv.fill = None
@@ -85,7 +91,7 @@ def Retrieve(Time, factors, values):
         d4prob = PlotGeometry()
         d4otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/exper/day4-8/archive/{Time.ptime:%Y}/day4prob_{Time.ptime:%Y%m%d}.lyr.geojson')
         d4prob.geometry = d4otlk['geometry']
-        if 'day4_fill' in factors:
+        if 'conv_fill' in factors:
             d4prob.fill = d4otlk['fill']
         else:
             d4prob.fill = None
@@ -98,7 +104,7 @@ def Retrieve(Time, factors, values):
         d5prob = PlotGeometry()
         d5otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/exper/day4-8/archive/{Time.ptime:%Y}/day5prob_{Time.ptime:%Y%m%d}.lyr.geojson')
         d5prob.geometry = d5otlk['geometry']
-        if 'day5_fill' in factors:
+        if 'conv_fill' in factors:
             d5prob.fill = d5otlk['fill']
         else:
             d5prob.fill = None
@@ -111,7 +117,7 @@ def Retrieve(Time, factors, values):
         d6prob = PlotGeometry()
         d6otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/exper/day4-8/archive/{Time.ptime:%Y}/day6prob_{Time.ptime:%Y%m%d}.lyr.geojson')
         d6prob.geometry = d6otlk['geometry']
-        if 'day6_fill' in factors:
+        if 'conv_fill' in factors:
             d6prob.fill = d6otlk['fill']
         else:
             d6prob.fill = None
@@ -124,7 +130,7 @@ def Retrieve(Time, factors, values):
         d7prob = PlotGeometry()
         d7otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/exper/day4-8/archive/{Time.ptime:%Y}/day7prob_{Time.ptime:%Y%m%d}.lyr.geojson')
         d7prob.geometry = d7otlk['geometry']
-        if 'day7_fill' in factors:
+        if 'conv_fill' in factors:
             d7prob.fill = d7otlk['fill']
         else:
             d7prob.fill = None
@@ -137,7 +143,7 @@ def Retrieve(Time, factors, values):
         d8prob = PlotGeometry()
         d8otlk = gpd.read_file(f'https://www.spc.noaa.gov/products/exper/day4-8/archive/{Time.ptime:%Y}/day8prob_{Time.ptime:%Y%m%d}.lyr.geojson')
         d8prob.geometry = d8otlk['geometry']
-        if 'day8_fill' in factors:
+        if 'conv_fill' in factors:
             d8prob.fill = d8otlk['fill']
         else:
             d8prob.fill = None

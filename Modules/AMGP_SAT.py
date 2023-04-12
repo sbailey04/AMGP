@@ -3,7 +3,7 @@
 #      Automated Map Generation Program        #
 #           Satelite Data Module               #
 #            Author: Sam Bailey                #
-#        Last Revised: Mar 28, 2023            #
+#        Last Revised: Apr 07, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -20,6 +20,11 @@ from datetime import datetime
 #------------------ END IMPORTS -------------------#
 
 #--------------- START DEFINITIONS ----------------#
+
+def info():
+    return {'name':"AMGP_SAT",
+            'priority':6,
+            'type':1}
 
 def getFactors():
     return {'sat_channel_2':8,

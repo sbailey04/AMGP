@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #            Gridded Data Module               #
 #             Author: Sam Bailey               #
-#        Last Revised: Mar 25, 2023            #
+#        Last Revised: Apr 11, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -30,27 +30,22 @@ from Modules import AMGP_UTIL as amgp
 
 #--------------- START DEFINITIONS ----------------#
 
+def info():
+    return {'name':"AMGP_GRD",
+            'priority':2,
+            'type':1}
+
 def getFactors():
     return {'height_contours':5,
             'temp_contours':3,
             'pressure_contours':4,
             'dew_contours':4,
             'thickness_500_1000':3,
-            'gridded_barbs':3,
-            'temp_fill':6,
-            'wind_speed_fill':6,
-            'temp_advect_fill':6,
-            'relative_vorticity_fill':6,
-            'absolute_vorticity_fill':7}
+            'gridded_barbs':3}
 
 def factors():
     print("<factors_grd> 'height_contours' - Gridded pressure height contours (upper-air only)")
     print("<factors_grd> 'temp_contours' - Gridded temperature contours")
-    print("<factors_grd> 'temp_fill' - Gridded temperature coloration fill")
-    print("<factors_grd> 'wind_speed_fill' - Gridded winds as a plot fill")
-    print("<factors_grd> 'temp_advect_fill' - Gridded temperature advection")
-    print("<factors_grd> 'relative_vorticity_fill' - Gridded relative vorticity")
-    print("<factors_grd> 'absolute_vorticity_fill' - Gridded absolute vorticity (upper-air only)")
     print("<factors_grd> 'pressure_contours' - Gridded pressure contours (surface only)")
     print("<factors_grd> 'dew_contours' - Gridded dewpoint contours (surface only)")
     print("<factors_grd> 'thickness_500_1000' - Gridded 500mb to 1000mb thickness contours")
@@ -72,69 +67,9 @@ def Retrieve(Time, factors, values):
         timesfc = Time.threetime
         timeua = Time.twelvetime
         
-    Data = FetchData(Time, level)
+    Data = FetchData(Time, level, int(values['delta']))
     
     if level != 'surface':
-        if "temp_fill" in factors:
-            temp_fill = declarative.FilledContourPlot()
-            temp_fill.data = Data.grd
-            temp_fill.field = 'Temperature_isobaric'
-            temp_fill.level = level * units.hPa
-            temp_fill.time = Data.time
-            temp_fill.contours = list(range(-100, 101, 1)) # rangeTL, rangeTH
-            temp_fill.colormap = 'coolwarm'
-            temp_fill.colorbar = 'horizontal'
-            temp_fill.plot_units = 'degC'
-            partialPlotsList.append(temp_fill)
-            
-        if "wind_speed_fill" in factors:
-            wind_speed_fill = declarative.FilledContourPlot()
-            wind_speed_fill.data = Data.grd
-            wind_speed_fill.field = 'wind_speed_isobaric'
-            wind_speed_fill.level = None
-            wind_speed_fill.time = None
-            wind_speed_fill.contours = list(range(10, 241, 20))
-            wind_speed_fill.colormap = 'BuPu'
-            wind_speed_fill.colorbar = 'horizontal'
-            wind_speed_fill.plot_units = 'knot'
-            partialPlotsList.append(wind_speed_fill)
-            
-        if "temp_advect_fill" in factors:
-            temp_advect_fill = declarative.FilledContourPlot()
-            temp_advect_fill.data = Data.grd
-            temp_advect_fill.field = 'temperature_advection'
-            temp_advect_fill.level = None
-            temp_advect_fill.time = None
-            temp_advect_fill.contours = list(np.arange(-29, 30, 0.1))
-            temp_advect_fill.colormap = 'bwr'
-            temp_advect_fill.colorbar = 'horizontal'
-            temp_advect_fill.scale = 3
-            temp_advect_fill.plot_units = 'degC/hour'
-            partialPlotsList.append(temp_advect_fill)
-            
-        if "relative_vorticity_fill" in factors:
-            relative_vorticity_fill = declarative.FilledContourPlot()
-            relative_vorticity_fill.data = Data.grd
-            relative_vorticity_fill.field = 'relative_vorticity'
-            relative_vorticity_fill.level = None
-            relative_vorticity_fill.time = None
-            relative_vorticity_fill.contours = list(range(-80, 81, 2))
-            relative_vorticity_fill.colormap = 'PuOr_r'
-            relative_vorticity_fill.colorbar = 'horizontal'
-            relative_vorticity_fill.scale = 1e5
-            partialPlotsList.append(relative_vorticity_fill)
-            
-        if "absolute_vorticity_fill" in factors:
-            absolute_vorticity_fill = declarative.FilledContourPlot()
-            absolute_vorticity_fill.data = Data.grd
-            absolute_vorticity_fill.field = 'Absolute_vorticity_isobaric'
-            absolute_vorticity_fill.level = level * units.hPa
-            absolute_vorticity_fill.time = Data.time
-            absolute_vorticity_fill.contours = list(range(-80, 81, 2))
-            absolute_vorticity_fill.colormap = 'PuOr_r'
-            absolute_vorticity_fill.colorbar = 'horizontal'
-            absolute_vorticity_fill.scale = 1e5
-            partialPlotsList.append(absolute_vorticity_fill)
             
         if "thickness_500_1000" in factors:
             thickness_500_1000 = declarative.ContourPlot()
@@ -201,56 +136,7 @@ def Retrieve(Time, factors, values):
             barbs.plot_units = 'knot'
             partialPlotsList.append(barbs)
             
-    else:
-        if "temp_fill" in factors:
-            temp_fill = declarative.FilledContourPlot()
-            temp_fill.data = Data.grd
-            temp_fill.field = 'Temperature_height_above_ground'
-            temp_fill.level = 2 * units.m
-            temp_fill.time = Data.time
-            temp_fill.contours = list(range(-68, 133, 2)) # rangeTL_F, rangeTH_F
-            temp_fill.colormap = 'coolwarm'
-            temp_fill.colorbar = 'horizontal'
-            temp_fill.plot_units = 'degF'
-            partialPlotsList.append(temp_fill)
-            
-        if "wind_speed_fill" in factors:
-            wind_speed_fill = declarative.FilledContourPlot()
-            wind_speed_fill.data = Data.grd
-            wind_speed_fill.field = 'wind_speed_height_above_ground'
-            wind_speed_fill.level = None
-            wind_speed_fill.time = None
-            wind_speed_fill.contours = list(range(10, 201, 20))
-            wind_speed_fill.colormap = 'BuPu'
-            wind_speed_fill.colorbar = 'horizontal'
-            wind_speed_fill.plot_units = 'knot'
-            partialPlotsList.append(wind_speed_fill)
-            
-        if "temp_advect_fill" in factors:
-            temp_advect_fill = declarative.FilledContourPlot()
-            temp_advect_fill.data = Data.grd
-            temp_advect_fill.field = 'temperature_advection'
-            temp_advect_fill.level = None
-            temp_advect_fill.time = None
-            temp_advect_fill.contours = list(np.arange(-29, 30, 0.1))
-            temp_advect_fill.colormap = 'bwr'
-            temp_advect_fill.colorbar = 'horizontal'
-            temp_advect_fill.scale = 3
-            temp_advect_fill.plot_units = 'degC/hour'
-            partialPlotsList.append(temp_advect_fill)
-            
-        if "relative_vorticity_fill" in factors:
-            relative_vorticity_fill = declarative.FilledContourPlot()
-            relative_vorticity_fill.data = Data.grd
-            relative_vorticity_fill.field = 'relative_vorticity'
-            relative_vorticity_fill.level = None
-            relative_vorticity_fill.time = None
-            relative_vorticity_fill.contours = list(range(-40, 41, 2))
-            relative_vorticity_fill.colormap = 'PuOr_r'
-            relative_vorticity_fill.colorbar = 'horizontal'
-            relative_vorticity_fill.scale = 1e5
-            partialPlotsList.append(relative_vorticity_fill)
-            
+    else:   
         if "thickness_500_1000" in factors:
             thickness_500_1000 = declarative.ContourPlot()
             thickness_500_1000.data = Data.grd
@@ -316,7 +202,7 @@ def Retrieve(Time, factors, values):
     return partialPlotsList
 
 class Data(object):
-    def __init__(self, Time, level):
+    def __init__(self, Time, level, delta):
         
         if (Time.category == 'sync') or (Time.category == 'raw') or (Time.category == 'near'):
             self.time = Time.time
@@ -360,5 +246,5 @@ class Data(object):
         self.grd['thickness_500_1000'] = (hght_500 - hght_1000).metpy.dequantify()
         
 
-def FetchData(Time, level):
-    return Data(Time, level)
+def FetchData(Time, level, delta):
+    return Data(Time, level, delta)

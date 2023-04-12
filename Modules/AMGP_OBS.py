@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #          Base Observation Module             #
 #            Author: Sam Bailey                #
-#        Last Revised: Mar 25, 2023            #
+#        Last Revised: Apr 12, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -22,12 +22,19 @@ from metpy.plots import declarative
 from metpy.units import units
 import os
 import pandas as pd
+import sys
 
 from Modules import AMGP_UTIL as amgp
+from Modules import AMGP_PLT as amgpplt
 
 #------------------ END IMPORTS -------------------#
 
 #--------------- START DEFINITIONS ----------------#
+
+def info():
+    return {'name':"AMGP_OBS",
+            'priority':1,
+            'type':1}
 
 def getFactors():
     return {'temperature':0,
@@ -77,6 +84,10 @@ def Retrieve(Time, factors, values):
         obs.data = Data.sfcDat
     else:
         obs.data = Data.uaDat
+    
+    if obs.data is None:
+        print("<error> You cannot make a map using factors that would cause obs data to attempt and fail a pull.")
+        amgpplt.inputChain()
     
     try:
         obs.time = Time.time
@@ -159,29 +170,30 @@ class Data(object):
         else:
             timesfc = Time.threetime
             timeua = Time.twelvetime
-            
-        if (timesfc.year < 2019) and (level == 'surface'):
-            try:
-                self.sfcDat = pd.read_csv(f'http://bergeron.valpo.edu/archive_surface_data/{timescf:%Y}/{timesfc:%Y%m%d}_metar.csv', parse_dates=['date_time'], na_values=[-9999], low_memory=False)
-                self.weather_format = 'present_weather'
-                self.sfcDat['tmpf'] = (self.sfcDat.air_temperature.values * units.degC).to('degF')
-                self.sfcDat['dwpf'] = (self.sfcDat.dew_point_temperature.values * units.degC).to('degF')
-            except:
-                print("<warning> The Valpo surface data archives are down!")
+        
+        if level == 'surface':
+            if timesfc.year < 2019:
+                try:
+                    self.sfcDat = pd.read_csv(f'http://bergeron.valpo.edu/archive_surface_data/{timesfc:%Y}/{timesfc:%Y%m%d}_metar.csv', parse_dates=['date_time'], na_values=[-9999], low_memory=False)
+                    self.weather_format = 'present_weather'
+                    self.sfcDat['tmpf'] = (self.sfcDat.air_temperature.values * units.degC).to('degF')
+                    self.sfcDat['dwpf'] = (self.sfcDat.dew_point_temperature.values * units.degC).to('degF')
+                except:
+                    print("<warning> Archive surface obs not found!")
+                    self.sfcDat = None
+            elif Time.recentness < timedelta(days=14):
+                try:
+                    data = StringIO(urlopen('http://bergeron.valpo.edu/current_surface_data/'f'{timesfc:%Y%m%d%H}_sao.wmo').read().decode('utf-8', 'backslashreplace'))
+                    self.sfcDat = metar.parse_metar_file(data, year=timesfc.year, month=timesfc.month)
+                    self.sfcDat['tmpf'] = (self.sfcDat.air_temperature.values * units.degC).to('degF')
+                    self.sfcDat['dwpf'] = (self.sfcDat.dew_point_temperature.values * units.degC).to('degF')
+                    self.weather_format = 'current_wx1_symbol'
+                except:
+                    print("<warning> Recent surface obs not found!")
+                    self.sfcDat = None
+            else:
+                print("<warning> The date you have selected is not in range for surace obs!")
                 self.sfcDat = None
-        elif Time.recentness < timedelta(days=14):
-            try:
-                data = StringIO(urlopen('http://bergeron.valpo.edu/current_surface_data/'f'{timesfc:%Y%m%d%H}_sao.wmo').read().decode('utf-8', 'backslashreplace'))
-                self.sfcDat = metar.parse_metar_file(data, year=timesfc.year, month=timesfc.month)
-                self.sfcDat['tmpf'] = (self.sfcDat.air_temperature.values * units.degC).to('degF')
-                self.sfcDat['dwpf'] = (self.sfcDat.dew_point_temperature.values * units.degC).to('degF')
-                self.weather_format = 'current_wx1_symbol'
-            except:
-                print("<warning> The Valpo surface data archives are down!")
-                self.sfcDat = None
-        else:
-            print("<warning> The date you have selected has no surface data available!")
-            self.sfcDat = None
             
         
         if level != 'surface':
