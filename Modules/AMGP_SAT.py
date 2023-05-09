@@ -3,7 +3,7 @@
 #      Automated Map Generation Program        #
 #           Satelite Data Module               #
 #            Author: Sam Bailey                #
-#        Last Revised: Apr 07, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -23,14 +23,13 @@ from datetime import datetime
 
 def info():
     return {'name':"AMGP_SAT",
-            'priority':6,
-            'type':1}
+            'uid':"01111100"}
 
 def getFactors():
-    return {'sat_channel_2':8,
-            'sat_channel_9':8,
-            'sat_channel_14':8,
-            'sat_truecolor':8}
+    return {'sat_channel_2':[8,1],
+            'sat_channel_9':[8,1],
+            'sat_channel_14':[8,1],
+            'sat_truecolor':[8,1]}
 
 def factors():
     print("<factors_sat> 'sat_channel_2' - Visible satelite data")

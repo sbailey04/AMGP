@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #               Plotting Module                #
 #            Author: Sam Bailey                #
-#        Last Revised: Apr 12, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.3.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -57,21 +57,27 @@ from Modules import AMGP_UTIL as amgp
 
 def info():
     return {'name':"AMGP_PLT",
-            'priority':-3,
-            'type':2}
+            'uid':"00220100"}
 
 def init(pack):
+    print("<menu_init> Opened the singular plotting interface <menu_init>")
     global unpack
     global area_dictionary
     global version
     global amgpmodules
     global noShow
+    global amgpmenumodules
+    global amgpcombomodules
+    global modules
     noShow = False
     unpack = pack
     config = unpack['config']
     area_dictionary = unpack['customareas']
     version = unpack['ver']
+    modules = unpack['modulenames']
     amgpmodules = unpack['datamods']
+    amgpmenumodules = unpack['menumods']
+    amgpcombomodules = unpack['combomods']
     imports(unpack)
     amgp.getTime()
     setInit()
@@ -122,28 +128,21 @@ def inputChain():
 #        inputChain()
     elif command[0] == 'preset':
         if command[1] == 'list':
-            for item in presets:
-                spi = item.split("-")
-                plotkeys = []
-                multikeys = []
-                skewtkeys = []
+            plotkeys = []
+            for item in unpack['presets']:
+                spi = item[0].split("-")
                 if spi[0] == "plot":
                     plotkeys.append(spi[1])
-                if spi[0] == "mmg":
-                    plotkeys.append(spi[1])
-                if spi[0] == "stlp":
-                    plotkeys.append(spi[1])
             print("<presets> Below is the list of all currently loaded presets:")
-            print("<presets> Plots: " + plotkeys)
-            print("<presets> Multimode: " + multikeys)
-            print("<presets> Skew-T: " + skewtkeys)
+            for item in plotkeys:
+                print(f"<presets> (obs) {item}")
             inputChain()
         else:
             presetLoad(command[1])
             singleLoads()
             inputChain()
     elif command[0] == 'factors':
-        for module in [amgpobs, amgpgrd, amgpsat, amgpconv]:
+        for module in amgpmodules.values():
             module.factors()
         inputChain()
     elif command[0] == 'paste':
@@ -159,7 +158,10 @@ def inputChain():
                 elif command[2] == "today":
                     loaded.update({'date':f'{command[2]}, {command[3]}'})
                 else:
-                    loaded.update({'date':f'{command[2]}, {command[3]}, {command[4]}, {command[5]}'})
+                    try:
+                        loaded.update({'date':f'{command[2]}, {command[3]}, {command[4]}, {command[5]}, {command[6]}'})
+                    except:
+                        loaded.update({'date':f'{command[2]}, {command[3]}, {command[4]}, {command[5]}'})
             if command[1] == "Delta":
                 loaded.update({'delta':command[2]})
             if command[1] == "Factors":
@@ -236,10 +238,27 @@ def inputChain():
             title = ''
         save('prev')
         print("<run> Previous settings saved.")
-        Time, plotslist, values = run(loaded)
-        amgpmap.SaveMap(amgpmap.Panel(Time, plotslist, values, area_dictionary, amgpmodules, title, S, noShow, version), S, noShow, version)
+        Time, plotslist, values = run(loaded, amgpmodules)
+        amgpmap.SaveMap(amgpmap.Panel(Time, plotslist, values, area_dictionary, amgpmodules, title, version), S, noShow)
         inputChain()
-    #elif command[0] == 'mode':
+    elif command[0] == 'switch':
+        try:
+            y = command[1]
+        except:
+            print("<error> Please enter a module name to switch to.")
+            inputChain()
+        if (f'AMGP_{command[1].upper()}' in modules.values()) or (f'AMGP_{command[1].upper()}' in modules.values()):
+            for k, v in modules.items():
+                if ((k in amgpmenumodules.keys()) or (k in amgpcombomodules.keys())) and (f'AMGP_{command[1].upper()}' == v):
+                    try:
+                        newMod = amgpmenumodules[k]
+                    except:
+                        newMod = amgpcombomodules[k]
+                    newMod.init(unpack)
+                    break
+        print("<error> That is not a valid module to switch to!")
+        inputChain()
+           
     elif command[0] == 'quit':
         sys.exit("<quit> The process was terminated.")
     else:
@@ -288,16 +307,18 @@ def singleLoads():
     print(f"<loaded> TM (Time Mode): {loaded['timemode']}")
     print(f"<loaded> CM (Convective Mode): {loaded['convmode']}")
                 
-def PullFactors(values):
+def PullFactors(values, amgpmodules):
     
     factorList = values['factors'].split(', ')
     
     plotType = []
+    fillType = []
     
     for factor in factorList:
         for module in amgpmodules.values():
             if factor in module.getFactors().keys():
-                plotType.append(module.getFactors()[f'{factor}'])
+                plotType.append(module.getFactors()[f'{factor}'][0])
+                fillType.append(module.getFactors()[f'{factor}'][1])
                 
     if (values['level'] == 'surface') and (0 in plotType):
         plotType.append(1)
@@ -305,14 +326,15 @@ def PullFactors(values):
         plotType.append(2)
     
     congPlotType = [*set(plotType)]
+    congFillType = [*set(fillType)]
     
-    return congPlotType
+    return [congPlotType, congFillType]
 
-def RetrievePlots(values, Time):
+def RetrievePlots(values, Time, amgpmodules):
     
     factors = values['factors'].split(', ')
     
-    congPlotType = PullFactors(values)
+    congPlotType = PullFactors(values, amgpmodules)[0]
     
     plotslist = []
     
@@ -331,7 +353,7 @@ def RetrievePlots(values, Time):
     
     
 # The meat of the program
-def run(values, **Override):
+def run(values, amgpmodules, **Override):
     
     currentTime = amgp.setTime()
     
@@ -356,10 +378,10 @@ def run(values, **Override):
     values['level'] = level
         
     # Date
-    Time = amgp.ParseTime(PullFactors(values), values['date'], currentTime, values['timemode'], values['convmode'])
+    Time = amgp.ParseTime(values['date'], PullFactors(values, amgpmodules)[0], currentTime, values['timemode'], values['convmode'])
     
     # Data
-    plotslist = RetrievePlots(values, Time)
+    plotslist = RetrievePlots(values, Time, amgpmodules)
     
     return Time, plotslist, values
 

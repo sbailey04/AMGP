@@ -18,8 +18,7 @@
 
 def info():
     return {'name':"AMGP_ANOM",
-            'priority':8,
-            'type':3}
+            'uid':"01331300"}
 
 def getFactors():
     return {}

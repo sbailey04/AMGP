@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #            Gridded Data Module               #
 #             Author: Sam Bailey               #
-#        Last Revised: Apr 11, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -32,16 +32,17 @@ from Modules import AMGP_UTIL as amgp
 
 def info():
     return {'name':"AMGP_GRD",
-            'priority':2,
-            'type':1}
+            'uid':"00610600"}
 
 def getFactors():
-    return {'height_contours':5,
-            'temp_contours':3,
-            'pressure_contours':4,
-            'dew_contours':4,
-            'thickness_500_1000':3,
-            'gridded_barbs':3}
+    return {'height_contours':[5,0],
+            'temp_contours':[3,0],
+            'pressure_contours':[4,0],
+            'dew_contours':[4,0],
+            'thickness_500_1000':[3,0],
+            'gridded_barbs':[3,0],
+            'cape_contours':[3,0],
+            'cin_contours':[3,0]}
 
 def factors():
     print("<factors_grd> 'height_contours' - Gridded pressure height contours (upper-air only)")
@@ -50,6 +51,8 @@ def factors():
     print("<factors_grd> 'dew_contours' - Gridded dewpoint contours (surface only)")
     print("<factors_grd> 'thickness_500_1000' - Gridded 500mb to 1000mb thickness contours")
     print("<factors_grd> 'gridded_barbs' - Gridded winds")
+    print("<factors_grd> 'cape_contours' - Surface-based convective available potential energy contours")
+    print("<factors_grd> 'cin_contours' - Surface-based convective inhibition contours")
 
 def Retrieve(Time, factors, values):
     
@@ -66,7 +69,7 @@ def Retrieve(Time, factors, values):
     else:
         timesfc = Time.threetime
         timeua = Time.twelvetime
-        
+    
     Data = FetchData(Time, level, int(values['delta']))
     
     if level != 'surface':
@@ -88,7 +91,10 @@ def Retrieve(Time, factors, values):
             pressure_heights.data = Data.grd
             pressure_heights.field = 'Geopotential_height_isobaric'
             pressure_heights.level = level * units.hPa
-            pressure_heights.time = Data.time
+            if Data.recent:
+                pressure_heights.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                pressure_heights.time = Data.time
             pressure_heights.contours = list(range(0, 12000, steps))
             pressure_heights.clabels = True
             pressure_heights.smooth_contour = int(values['smoothing'])
@@ -99,7 +105,10 @@ def Retrieve(Time, factors, values):
             temp_contours.data = Data.grd
             temp_contours.field = 'Temperature_isobaric'
             temp_contours.level = level * units.hPa
-            temp_contours.time = Data.time
+            if Data.recent:
+                temp_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                temp_contours.time = Data.time
             temp_contours.contours = list(range(-100, 101, 5))
             temp_contours.linecolor = 'red'
             temp_contours.linestyle = 'dashed'
@@ -117,7 +126,10 @@ def Retrieve(Time, factors, values):
             dew_contours.data = Data.grd
             dew_contours.field = 'Dewpoint_isobaric'
             dew_contours.level = None
-            dew_contours.time = Data.time
+            if Data.recent:
+                dew_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                dew_contours.time = Data.time
             dew_contours.contours = list(range(-100, 101, 5))
             dew_contours.linecolor = 'green'
             dew_contours.linestyle = 'dashed'
@@ -126,10 +138,45 @@ def Retrieve(Time, factors, values):
             dew_contours.smooth_contours = int(values['smoothing'])
             partialPlotsList.append(dew_contours)
         
+        if "cape_contours" in factors:
+            cape_contours = declarative.ContourPlot()
+            cape_contours.data = Data.grd
+            cape_contours.field = 'Convective_available_potential_energy_surface'
+            cape_contours.level = None
+            if Data.recent:
+                cape_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cape_contours.time = Data.time
+            cape_contours.contours = list(range(200, 5001, 200))
+            cape_contours.linecolor = 'yellow'
+            cape_contours.linestyle = 'dashed'
+            cape_contours.clabels = True
+            cape_contours.smooth_contour = int(values['smoothing'])
+            partialPlotsList.append(cape_contours)
+            
+        if "cin_contours" in factors:
+            cin_contours = declarative.ContourPlot()
+            cin_contours.data = Data.grd
+            cin_contours.field = 'Convective_inhibition_surface'
+            cin_contours.level = None
+            if Data.recent:
+                cin_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cin_contours.time = Data.time
+            cin_contours.contours = list(range(-700, -24, 25))
+            cin_contours.linecolor = 'orange'
+            cin_contours.linestyle = 'dashed'
+            cin_contours.clabels = True
+            cin_contours.smooth_contour = int(values['smoothing'])
+            partialPlotsList.append(cin_contours)
+        
         if "gridded_barbs" in factors:
             barbs = declarative.BarbPlot()
             barbs.data = Data.grd
-            barbs.time = Data.time
+            if Data.recent:
+                barbs.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                barbs.time = Data.time
             barbs.field = ['u-component_of_wind_isobaric', 'v-component_of_wind_isobaric']
             barbs.level = level * units.hPa
             barbs.skip = (int(values['barbfactor']), int(values['barbfactor']))
@@ -154,7 +201,10 @@ def Retrieve(Time, factors, values):
             pressure.data = Data.grd
             pressure.field = 'Pressure_reduced_to_MSL_msl'
             pressure.level = None
-            pressure.time = Data.time
+            if Data.recent:
+                pressure.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                pressure.time = Data.time
             pressure.contours = list(range(0, 2000, 4))
             pressure.clabels = True
             pressure.plot_units = 'hPa'
@@ -166,7 +216,10 @@ def Retrieve(Time, factors, values):
             temp_contours.data = Data.grd
             temp_contours.field = 'Temperature_height_above_ground'
             temp_contours.level = 2 * units.m
-            temp_contours.time = Data.time
+            if Data.recent:
+                temp_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                temp_contours.time = Data.time
             temp_contours.contours = list(range(-100, 101, 10))
             temp_contours.linecolor = 'red'
             temp_contours.linestyle = 'dashed'
@@ -180,7 +233,10 @@ def Retrieve(Time, factors, values):
             dew_contours.data = Data.grd
             dew_contours.field = 'Dewpoint_temperature_height_above_ground'
             dew_contours.level = 2 * units.m
-            dew_contours.time = Data.time
+            if Data.recent:
+                dew_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                dew_contours.time = Data.time
             dew_contours.contours = list(range(-100, 101, 10))
             dew_contours.linecolor = 'green'
             dew_contours.linestyle = 'dashed'
@@ -188,11 +244,46 @@ def Retrieve(Time, factors, values):
             dew_contours.plot_units = 'degF'
             dew_contours.smooth_contour = int(values['smoothing'])
             partialPlotsList.append(dew_contours)
+        
+        if "cape_contours" in factors:
+            cape_contours = declarative.ContourPlot()
+            cape_contours.data = Data.grd
+            cape_contours.field = 'Convective_available_potential_energy_surface'
+            cape_contours.level = None
+            if Data.recent:
+                cape_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cape_contours.time = Data.time
+            cape_contours.contours = list(range(200, 5001, 200))
+            cape_contours.linecolor = 'yellow'
+            cape_contours.linestyle = 'dashed'
+            cape_contours.clabels = True
+            cape_contours.smooth_contour = int(values['smoothing'])
+            partialPlotsList.append(cape_contours)
+            
+        if "cin_contours" in factors:
+            cin_contours = declarative.ContourPlot()
+            cin_contours.data = Data.grd
+            cin_contours.field = 'Convective_inhibition_surface'
+            cin_contours.level = None
+            if Data.recent:
+                cin_contours.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cin_contours.time = Data.time
+            cin_contours.contours = list(range(-700, -24, 25))
+            cin_contours.linecolor = 'orange'
+            cin_contours.linestyle = 'dashed'
+            cin_contours.clabels = True
+            cin_contours.smooth_contour = int(values['smoothing'])
+            partialPlotsList.append(cin_contours)
             
         if "gridded_barbs" in factors:
             barbs = declarative.BarbPlot()
             barbs.data = Data.grd
-            barbs.time = Data.time
+            if Data.recent:
+                barbs.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                barbs.time = Data.time
             barbs.field = ['u-component_of_wind_height_above_ground', 'v-component_of_wind_height_above_ground']
             barbs.level = 10 * units.m
             barbs.skip = (int(values['barbfactor']), int(values['barbfactor']))
@@ -204,22 +295,28 @@ def Retrieve(Time, factors, values):
 class Data(object):
     def __init__(self, Time, level, delta):
         
+        self.recent = False
+        
         if (Time.category == 'sync') or (Time.category == 'raw') or (Time.category == 'near'):
             self.time = Time.time
         else:
             self.time = Time.sixtime
         
         if (Time.recentness < timedelta(days=14)):
-            self.grd = xr.open_dataset('https://thredds.ucar.edu/thredds/dodsC/grib'f'/NCEP/GFS/Global_onedeg/GFS_Global_onedeg_{self.time:%Y%m%d}_{self.time:%H%M}.grib2').metpy.parse_cf()
+            self.grd = xr.open_dataset(f'https://thredds.ucar.edu/thredds/dodsC/grib/NCEP/GFS/Global_onedeg/GFS_Global_onedeg_{self.time:%Y%m%d}_{self.time:%H%M}.grib2').metpy.parse_cf()
+            self.recent = True
         elif (self.time >= datetime(2004, 3, 2)):
             try:
-                self.grd = xr.open_dataset('https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-003-files/'f'{self.time:%Y%m/%Y%m%d}/gfs_3_{self.time:%Y%m%d_%H}00_{delta:03d}.grb2').metpy.parse_cf()
+                # More recent model data, from Oct 2022 to roughly 3 days prior to present; goes out to 384 hours.
+                self.grd = xr.open_dataset(f'https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-003-files/{self.time:%Y%m/%Y%m%d}/gfs_3_{self.time:%Y%m%d_%H}00_{delta:03d}.grb2').metpy.parse_cf()
             except:
                 try:
-                    self.grd = xr.open_dataset('https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-g3-anl-files-old/'f'{self.time:%Y%m/%Y%m%d}/gfsanl_3_{self.time:%Y%m%d_%H}00_000.grb').metpy.parse_cf()
+                    # Slightly older model data, from Mar 2003 to May 2020; goes out to 6 hours.
+                    self.grd = xr.open_dataset(f'https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-g3-anl-files-old/{self.time:%Y%m/%Y%m%d}/gfsanl_3_{self.time:%Y%m%d_%H}00_000.grb').metpy.parse_cf()
                 except:
                     try:
-                        self.grd = xr.open_dataset('https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-003-files-old/'f'{self.time:%Y%m/%Y%m%d}/gfs_3_{self.time:%Y%m%d_%H}00_{delta:03d}.grb2').metpy.parse_cf()
+                        # Intermediate data, from June 2016 to May 2020; forecast hours unknown.
+                        self.grd = xr.open_dataset(f'https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-003-files-old/{self.time:%Y%m/%Y%m%d}/gfs_3_{self.time:%Y%m%d_%H}00_{delta:03d}.grb2').metpy.parse_cf()
                     except:
                         print("<warning> Gridded data could not be found for the date you have selected!")
                         self.grd = None
@@ -230,19 +327,19 @@ class Data(object):
             self.grd = None
         
         if level == 'surface':
-            tmpk = self.grd.Temperature_height_above_ground.metpy.sel(vertical=2*units.m, time=self.time)
-            uwind = self.grd['u-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time)
-            vwind = self.grd['v-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time)
+            tmpk = self.grd.Temperature_height_above_ground.metpy.sel(vertical=2*units.m, time=self.time + timedelta(hours=delta))
+            uwind = self.grd['u-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time + timedelta(hours=delta))
+            vwind = self.grd['v-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time + timedelta(hours=delta))
             self.grd['wind_speed_height_above_ground'] = mpcalc.wind_speed(uwind, vwind)
         else:
-            tmpk = self.grd.Temperature_isobaric.metpy.sel(vertical=level*units.hPa, time=self.time)
-            uwind = self.grd['u-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time)
-            vwind = self.grd['v-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time)
+            tmpk = self.grd.Temperature_isobaric.metpy.sel(vertical=level*units.hPa, time=self.time + timedelta(hours=delta))
+            uwind = self.grd['u-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time + timedelta(hours=delta))
+            vwind = self.grd['v-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time + timedelta(hours=delta))
             self.grd['wind_speed_isobaric'] = mpcalc.wind_speed(uwind, vwind)
         self.grd['relative_vorticity'] = mpcalc.vorticity(uwind, vwind)
         self.grd['temperature_advection'] = mpcalc.advection(tmpk, uwind, vwind)
-        hght_500 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time, vertical=500 * units.hPa).metpy.quantify()
-        hght_1000 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time, vertical=1000 * units.hPa).metpy.quantify()
+        hght_500 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time + timedelta(hours=delta), vertical=500 * units.hPa).metpy.quantify()
+        hght_1000 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time + timedelta(hours=delta), vertical=1000 * units.hPa).metpy.quantify()
         self.grd['thickness_500_1000'] = (hght_500 - hght_1000).metpy.dequantify()
         
 

@@ -1,0 +1,1 @@
+{"amgp_ver": "0.3.0", "type": "obs", "settings": {"level": "surface", "date": "2023, 4, 20, 0", "delta": "0", "factors": "watches, warnings, reports, day1", "area": "OKN", "dpi": "150", "scale": "1.3", "prfactor": "0.75", "barbfactor": "3", "smoothing": "3", "projection": "custom", "timemode": "raw", "convmode": "recent"}}

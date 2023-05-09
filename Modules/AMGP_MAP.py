@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #           Map Generation Module              #
 #            Author: Sam Bailey                #
-#        Last Revised: Apr 12, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.3.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -49,6 +49,7 @@ warnings.filterwarnings('ignore', category=UserWarning)
 #----------------- AMGP IMPORTS -------------------#
 
 from Modules import AMGP_UTIL as amgp
+from Modules import AMGP_PLT as amgpplt
 
 #------------------ END IMPORTS -------------------#
 
@@ -56,53 +57,10 @@ from Modules import AMGP_UTIL as amgp
 
 def info():
     return {'name':"AMGP_MAP",
-            'priority':-2,
-            'type':0}
-                
-def PullFactors(values, amgpmodules):
-    
-    factorList = values['factors'].split(', ')
-    
-    plotType = []
-    
-    for factor in factorList:
-        for module in amgpmodules.values():
-            if factor in module.getFactors().keys():
-                plotType.append(module.getFactors()[f'{factor}'])
-                
-    if (values['level'] == 'surface') and (0 in plotType):
-        plotType.append(1)
-    if (values['level'] != 'surface') and (0 in plotType):
-        plotType.append(2)
-    
-    congPlotType = [*set(plotType)]
-    
-    return congPlotType
-
-def RetrievePlots(values, Time, amgpmodules):
-    
-    factors = values['factors'].split(', ')
-    
-    congPlotType = PullFactors(values, amgpmodules)
-    
-    plotslist = []
-    
-    for module in amgpmodules.values():
-        var = f"{module}".strip("amgp")
-        globals()[f"{var}"] = []
-        
-        for factor in factors:
-            if factor in module.getFactors().keys():
-                globals()[f"{var}"].append(factor)
-        
-        if len(globals()[f"{var}"]) > 0:
-            plotslist.extend(module.Retrieve(Time, globals()[f"{var}"], values))
-    
-    return plotslist
-    
+            'uid':"00300200"}
     
 # The meat of the program
-def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, S, noShow, version):
+def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, version):
     
     # Panel Preparation
     panel = declarative.MapPanel()
@@ -125,7 +83,11 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
     
         panel.area = modArea
     else:
-        panel.area = f'{values["area"]}'
+        try:
+            panel.area = f'{values["area"]}'
+        except:
+            print("<error> The panel area you have put in does not exist!")
+            amgpplt.inputChain()
 
     # Figuring out the data display area
     areaZero = list(panel.area)
@@ -165,13 +127,15 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
     # Data acquisition and packaging
     panel.plots = plotslist
     
+    plotTypes = amgpplt.PullFactors(values, amgpmodules)[0]
+    fillTypes = amgpplt.PullFactors(values, amgpmodules)[1]
+    
     # Automatic panel titles
     if titleOverride != '':
         title = titleOverride
         titlebits = str(title)
     else:
         titlebits = []
-        plotTypes = PullFactors(values, amgpmodules)
         
         if (0 in plotTypes) and (1 not in plotTypes) and (2 not in plotTypes):
             titlebits.append("Obs")
@@ -208,6 +172,13 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
             if "day8prob" in values['factors']:
                 titlebits.append("Day 8 Probability")
         
+        if 13 in plotTypes:
+            titlebits.append("Warnings")
+        if 14 in plotTypes:
+            titlebits.append("Watches")
+        if 15 in plotTypes:
+            titlebits.append("Storm Reports")
+        
         if Time.category == 'raw':
             title = f"{Time.tsalp} - {', '.join(titlebits)} - Raw for Time"
         if Time.category == 'sync':
@@ -226,48 +197,68 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
     
     panel.title_fontsize = (scaledDiff**0.75) * 1.5
                             
-    return {'panelSize':(scaledDiff, scaledDiff),'panel':panel,'timeObj':Time,'values':values, 'titlebits':titlebits}
+    return {'panelSize':(scaledDiff, scaledDiff),'panel':panel,'timeObj':Time,'values':values, 'titlebits':titlebits,'filltype':fillTypes,'ver':version}
     
-def SaveMap(product, doSave, noShow, version):
+def SaveMap(product, doSave, noShow, proj=''):
     
     daystamp = product['timeObj'].ds
     timestampNum = product['timeObj'].tsnum
     timestampAlp = product['timeObj'].tsalp
     cat = product['timeObj'].category
     currentTime = product['timeObj'].now
+    fill = 0
+    version = product['ver']
+    if 1 in product['filltype']:
+        fill = 1
     
-    nowstamp = amgp.ParseTime([-1], "recent", currentTime, "raw", "latest").tsfull
+    nowstamp = amgp.ParseTime("recent", [-1], currentTime, "raw", "latest").tsfull
     
     pc = declarative.PanelContainer()
     pc.size = product['panelSize']
     pc.panels = [product['panel']]
     
     # Saving the map
-    dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
-    OldDir = os.path.isdir(f'{dr}/{daystamp}')
-    
-    if type(product['titlebits']) == str:
-        inst = product['titlebits']
-    elif type(product['titlebits']) == list:
-        inst = ', '.join(product['titlebits'])
+    if proj == '':
+        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+        OldDir = os.path.isdir(f'{dr}/{daystamp}')
+        
+        if doSave:
+            if type(product['titlebits']) == str:
+                inst = product['titlebits']
+            elif type(product['titlebits']) == list:
+                inst = ', '.join(product['titlebits'])
 
-    if doSave:
+            if OldDir == False:
+                os.mkdir(f'{dr}/{daystamp}')
+            pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
+            save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
+            save = amgp.Watermark(save, version, fill)
+            save.save(f"{dr}/{daystamp}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
+            if noShow == False:
+                save.show()
+            print("<run> Map successfully saved!")
+        else:
+            if os.path.isdir(f"{dr}/Temp") == False:
+                os.mkdir(f"{dr}/Temp")
+            pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
+            save = PImage.open(f'{dr}/Temp/Temp.png').convert('RGBA')
+            save = amgp.Watermark(save, version, fill)
+            save.show()
+    else:
+        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+        OldDir = os.path.isdir(f'{dr}/Projects/{proj}')
+        
+        if type(product['titlebits']) == str:
+            inst = product['titlebits']
+        elif type(product['titlebits']) == list:
+            inst = ', '.join(product['titlebits'])
+
         if OldDir == False:
-            os.mkdir(f'{dr}/{daystamp}')
+            os.mkdir(f'{dr}/Projects/{proj}')
         pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
         save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
-        save = amgp.Watermark(save, version)
-        save.save(f"{dr}/{daystamp}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
-        if noShow == False:
-            save.show()
-        print("<run> Map successfully saved!")
-    else:
-        if os.path.isdir(f"{dr}/Temp") == False:
-            os.mkdir(f"{dr}/Temp")
-        pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
-        save = PImage.open(f'{dr}/Temp/Temp.png').convert('RGBA')
-        save = amgp.Watermark(save, version)
-        save.show()
+        save = amgp.Watermark(save, version, fill)
+        save.save(f"{dr}/Projects/{proj}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
 
 
 # --- End Definitions ---

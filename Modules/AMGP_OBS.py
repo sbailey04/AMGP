@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #          Base Observation Module             #
 #            Author: Sam Bailey                #
-#        Last Revised: Apr 12, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -33,18 +33,19 @@ from Modules import AMGP_PLT as amgpplt
 
 def info():
     return {'name':"AMGP_OBS",
-            'priority':1,
-            'type':1}
+            'uid':"00510500"}
+# uid format: ###$%%%%%; ### - module id, $ - module type, %%%% - module priority
 
 def getFactors():
-    return {'temperature':0,
-            'dewpoint':0,
-            'dewpoint_depression':0,
-            'height':2,
-            'pressure':1,
-            'current_weather':1,
-            'barbs':0,
-            'cloud_coverage':1}
+    return {'temperature':[0,0],
+            'dewpoint':[0,0],
+            'dewpoint_depression':[0,0],
+            'height':[2,0],
+            'pressure':[1,0],
+            'current_weather':[1,0],
+            'barbs':[0,0],
+            'cloud_coverage':[1,0]}
+# factor data format: [ time format, fill ]
 
 def factors():
     print("<factors_obs> 'temperature' - Observation station temps")
@@ -181,7 +182,7 @@ class Data(object):
                 except:
                     print("<warning> Archive surface obs not found!")
                     self.sfcDat = None
-            elif Time.recentness < timedelta(days=14):
+            else:
                 try:
                     data = StringIO(urlopen('http://bergeron.valpo.edu/current_surface_data/'f'{timesfc:%Y%m%d%H}_sao.wmo').read().decode('utf-8', 'backslashreplace'))
                     self.sfcDat = metar.parse_metar_file(data, year=timesfc.year, month=timesfc.month)
@@ -189,11 +190,19 @@ class Data(object):
                     self.sfcDat['dwpf'] = (self.sfcDat.dew_point_temperature.values * units.degC).to('degF')
                     self.weather_format = 'current_wx1_symbol'
                 except:
-                    print("<warning> Recent surface obs not found!")
-                    self.sfcDat = None
-            else:
-                print("<warning> The date you have selected is not in range for surace obs!")
-                self.sfcDat = None
+                    try:
+                        data = pd.read_csv(f'http://mesonet.agron.iastate.edu/cgi-bin/request/asos.py?data=all&tz=Etc/UTC&format=comma&latlon=yes&year1={timesfc.year}&month1={timesfc.month}&day1={timesfc.day}&hour1={timesfc.hour}&minute1={timesfc.minute}&year2={timesfc.year}&month2={timesfc.month}&day2={timesfc.day}&hour2={timesfc.hour}&minute2={timesfc.minute}', skiprows=5, na_values=['M'], low_memory=False).replace('T', 0.00001).groupby('station').tail(1)
+                        self.sfcDat = metar.parse_metar_file(StringIO('\n'.join(val for val in data.metar)), year=timesfc.year, month=timesfc.month)
+                        self.sfcDat['date_time'] = timesfc
+                        self.weather_format = 'current_wx1_symbol'
+                        self.sfcDat['tmpf'] = (self.sfcDat.air_temperature.values * units.degC).to('degF')
+                        self.sfcDat['dwpf'] = (self.sfcDat.dew_point_temperature.values * units.degC).to('degF')
+                    except:
+                        print("<warning> Recent surface obs not found!")
+                        self.sfcDat = None
+#            else:
+#                print("<warning> The date you have selected is not in range for surace obs!")
+#                self.sfcDat = None
             
         
         if level != 'surface':

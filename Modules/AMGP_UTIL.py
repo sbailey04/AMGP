@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #             Utilities Module                 #
 #            Author: Sam Bailey                #
-#        Last Revised: Apr 12, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -28,11 +28,10 @@ from PIL import ImageDraw, ImageFont, ImageFilter
 
 def info():
     return {'name':"AMGP_UTIL",
-            'priority':0,
-            'type':0}
+            'uid':"00100400"}
 
 class Time(object):
-    def __init__(self, plotType, Date, currentTime, timeMode, convMode):
+    def __init__(self, Date, plotType, currentTime, timeMode, convMode):
         
         timeFormat = None
         convFormat = None
@@ -41,7 +40,7 @@ class Time(object):
         timeFormats = {0:[8], # Precise to the hour
                        1:[0, 1], # Precise to three hours - used by surface obs
                        2:[3, 4, 5, 6, 7], # Precise to six hours - used by gridded reanalysis data
-                       3:[2, 13], # Precise to twelve hours - used by upper-air obs and Skew-Ts
+                       3:[2, 16], # Precise to twelve hours - used by upper-air obs and Skew-Ts
                        4:[], # Precise to twenty four hours
                        5:[9], # Convective outlook day 1
                        6:[10], # Convective outlook day 2
@@ -70,7 +69,10 @@ class Time(object):
         elif splitDate[0] == 'today':
             givenTime = datetime(currentTime.year, currentTime.month, currentTime.day, int(splitDate[1]))
         else:
-            givenTime = datetime(int(splitDate[0]), int(splitDate[1]), int(splitDate[2]), int(splitDate[3]))
+            try:
+                givenTime = datetime(int(splitDate[0]), int(splitDate[1]), int(splitDate[2]), int(splitDate[3]), int(splitDate[4]))
+            except:
+                givenTime = datetime(int(splitDate[0]), int(splitDate[1]), int(splitDate[2]), int(splitDate[3]))
             
         recentness = currentTime - givenTime
         if recentness < timedelta(hours=3):
@@ -82,7 +84,6 @@ class Time(object):
         else:
             flag = 0
             flag2 = 0
-           
         
         if not rec:
             if (givenTime < datetime(1931, 1, 2)):
@@ -99,6 +100,7 @@ class Time(object):
             self.time = givenTime
             # This is basically only good for satelite data when "recent" is used.
         elif timeMode == 'async':
+            self.zerotime = datetime(givenTime.year, givenTime.month, givenTime.day, givenTime.hour, givenTime.minute)
             self.onetime = datetime(givenTime.year, givenTime.month, givenTime.day, math.floor(givenTime.hour))
             for hour in [21, 18, 15, 12, 9, 6, 3, 0]:
                 if givenTime.hour >= hour:
@@ -106,18 +108,21 @@ class Time(object):
                     self.threetime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                     break
             for hour in [18, 12, 6, 0]:
-                if givenTime.hour >= hour + 6 * flag2:
+                if givenTime.hour >= hour + (6 * flag2):
                     Hour = hour
                     self.sixtime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                     break
-            if givenTime.hour < 6:
+            if (flag2 == 1) and (givenTime.hour < 6):
                 Hour = 18
                 self.sixtime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             for hour in [12, 0]:
-                if givenTime.hour >= hour + 3 * flag:
+                if givenTime.hour >= hour + (3 * flag):
                     Hour = hour
                     self.twelvetime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                     break
+            if (flag == 1) and (givenTime.hour < 3):
+                    Hour = 12
+                    self.twelvetime = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             self.twentyfourtime = datetime(givenTime.year, givenTime.month, givenTime.day, 0)
         elif timeMode == 'sync':
             self.category = "sync"
@@ -126,17 +131,20 @@ class Time(object):
                 self.time = datetime(givenTime.year, givenTime.month, givenTime.day, 0)
             elif timeFormat == 3:
                 for hour in [12, 0]:
-                    if givenTime.hour >= hour + 3 * flag:
+                    if givenTime.hour >= hour + (3 * flag):
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
+                if (flag == 1) and (givenTime.hour < 3):
+                    Hour = 12
+                    self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             elif timeFormat == 2:
                 for hour in [18, 12, 6, 0]:
-                    if givenTime.hour >= hour + 6 * flag2:
+                    if givenTime.hour >= hour + (6 * flag2):
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
-                if givenTime.hour < 6:
+                if (flag2 == 1) and (givenTime.hour < 6):
                     Hour = 18
                     self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             elif timeFormat == 1:
@@ -160,7 +168,7 @@ class Time(object):
                         break
             elif timeFormat == 2:
                 for hour in [18, 12, 6, 0]:
-                    if givenTime.hour >= hour + 6 * flag2:
+                    if givenTime.hour >= hour + (6 * flag2):
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
@@ -169,7 +177,7 @@ class Time(object):
                     self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour) - timedelta(days=1)
             elif timeFormat == 3:
                 for hour in [12, 0]:
-                    if givenTime.hour >= hour + 3 * flag:
+                    if givenTime.hour >= hour + (3 * flag):
                         Hour = hour
                         self.time = datetime(givenTime.year, givenTime.month, givenTime.day, Hour)
                         break
@@ -182,40 +190,32 @@ class Time(object):
             self.minutes = 0
         
         if timeMode == "async":
+            self.ds = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}"
+            self.tsnum = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}-{currentTime.strftime('%H%M')}Z"
             if timeFormat == 0:
                 self.category = "async-1"
-                self.ds = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}"
-                self.tsnum = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}-{self.onetime.strftime('%H')}Z"
-                self.tsalp = f"{self.onetime.strftime('%b')} {self.onetime.day}, {self.onetime.year} - {self.onetime.hour}Z"
+                self.tsalp = f"{self.onetime.strftime('%b')} {self.onetime.day}, {self.onetime.year} - {self.onetime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
                 self.recentness = currentTime - self.onetime
             elif timeFormat == 1:
                 self.category = "async-3"
-                self.ds = f"{self.threetime.year}-{self.threetime.strftime('%m')}-{self.threetime.strftime('%d')}"
-                self.tsnum = f"{self.threetime.year}-{self.threetime.strftime('%m')}-{self.threetime.strftime('%d')}-{self.threetime.strftime('%H')}Z"
-                self.tsalp = f"{self.threetime.strftime('%b')} {self.threetime.day}, {self.threetime.year} - {self.threetime.hour}Z"
+                self.tsalp = f"{self.threetime.strftime('%b')} {self.threetime.day}, {self.threetime.year} - {self.threetime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
                 self.recentness = currentTime - self.threetime
             elif timeFormat == 2:
                 self.category = "async-6"
-                self.ds = f"{self.sixtime.year}-{self.sixtime.strftime('%m')}-{self.sixtime.strftime('%d')}"
-                self.tsnum = f"{self.sixtime.year}-{self.sixtime.strftime('%m')}-{self.sixtime.strftime('%d')}-{self.sixtime.strftime('%H')}Z"
-                self.tsalp = f"{self.sixtime.strftime('%b')} {self.sixtime.day}, {self.sixtime.year} - {self.sixtime.hour}Z"
+                self.tsalp = f"{self.sixtime.strftime('%b')} {self.sixtime.day}, {self.sixtime.year} - {self.sixtime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
                 self.recentness = currentTime - self.sixtime
             elif timeFormat == 3:
                 self.category = "async-12"
-                self.ds = f"{self.twelvetime.year}-{self.twelvetime.strftime('%m')}-{self.twelvetime.strftime('%d')}"
-                self.tsnum = f"{self.twelvetime.year}-{self.twelvetime.strftime('%m')}-{self.twelvetime.strftime('%d')}-{self.twelvetime.strftime('%H')}Z"
-                self.tsalp = f"{self.twelvetime.strftime('%b')} {self.twelvetime.day}, {self.twelvetime.year} - {self.twelvetime.hour}Z"
+                self.tsalp = f"{self.twelvetime.strftime('%b')} {self.twelvetime.day}, {self.twelvetime.year} - {self.twelvetime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
                 self.recentness = currentTime - self.twelvetime
             elif timeFormat == 4:
                 self.category = "async-24"
-                self.ds = f"{self.twentyfourtime.year}-{self.twentyfourtime.strftime('%m')}-{self.twentyfourtime.strftime('%d')}"
-                self.tsnum = f"{self.twentyfourtime.year}-{self.twelvettwentyfourtimeime.strftime('%m')}-{self.twentyfourtime.strftime('%d')}-{self.twentyfourtime.strftime('%H')}Z"
-                self.tsalp = f"{self.twentyfourtime.strftime('%b')} {self.twentyfourtime.day}, {self.twentyfourtime.year} - {self.twentyfourtime.hour}Z"
+                self.tsalp = f"{self.twentyfourtime.strftime('%b')} {self.twentyfourtime.day}, {self.twentyfourtime.year} - {self.twentyfourtime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
                 self.recentness = currentTime - self.twentyfourtime
         else:
             self.ds = f"{self.time.year}-{self.time.strftime('%m')}-{self.time.strftime('%d')}"
-            self.tsnum = f"{self.time.year}-{self.time.strftime('%m')}-{self.time.strftime('%d')}-{self.time.strftime('%H')}Z"
-            self.tsalp = f"{self.time.strftime('%b')} {self.time.day}, {self.time.year} - {self.time.hour}Z"
+            self.tsnum = f"{self.time.year}-{self.time.strftime('%m')}-{self.time.strftime('%d')}-{self.time.strftime('%H%M')}Z"
+            self.tsalp = f"{self.time.strftime('%b')} {self.time.day}, {self.time.year} - {self.time.hour:02d}{self.time.minute:02d}Z"
             self.recentness = currentTime - self.time
         
         try:
@@ -300,34 +300,20 @@ class Time(object):
         self.convformat = convFormat
         
         self.now = currentTime
-                
-        #elif convMode == "auto":
-        #    if convFormat == 5:
-        #        
-        #    if convFormat == 6:
-        #        
-        #    if convFormat == 7:
-                
-                
-            
-            
-            
-        
-        
         
     def ToString(self):
-        return f"{self.time.year}, {self.time.month}, {self.time.day}, {self.time.hour}"
+        return f"{self.time.year}, {self.time.month}, {self.time.day}, {self.time.hour}, {self.time.minute}"
     
     def WithMinutes(self):
         return datetime(self.time.year, self.time.month, self.time.day, self.time.hour, self.minutes)
     
 
-def ParseTime(plotType, string, currentTimeObj, timeMode, convMode):
-    return Time(plotType, string, currentTimeObj, timeMode, convMode)
+def ParseTime(string, plotType=[-1], currentTimeObj=datetime.utcnow(), timeMode="raw", convMode="recent"):
+    return Time(string, plotType, currentTimeObj, timeMode, convMode)
 
-def FromDatetime(plotType, datetimeObj, currentTimeObj, timeMode, convMode):
-        customTimeFormat = f"{datetimeObj.year}, {datetimeObj.month}, {datetimeObj.day}, {datetimeObj.hour}"
-        newTime = ParseTime(plotType, customTimeFormat, currentTimeObj, timeMode, convMode)
+def FromDatetime(datetimeObj, plotType=[-1], currentTimeObj=datetime.utcnow(), timeMode="raw", convMode="recent"):
+        customTimeFormat = f"{datetimeObj.year}, {datetimeObj.month}, {datetimeObj.day}, {datetimeObj.hour}, {datetimeObj.minute}"
+        newTime = ParseTime(customTimeFormat, plotType, currentTimeObj, timeMode, convMode)
         return newTime
     
     
@@ -378,18 +364,54 @@ def ClearTemp():
             with contextlib.suppress(FileNotFoundError):
                 os.remove(f"{dr}/Temp/{subPath}")
 
-def Watermark(save, version):
-    wid, hei = save.size
-    if wid > hei:
-        sz = (int(hei * 0.8), int(hei * 0.8))
-    if hei > wid:
-        sz = (int(wid * 0.8), int(wid * 0.8))
-    sz1, sz2 = sz
-    dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "")
-    wm = PImage.open(f'{dr}/Resources/logo.png')
-    wm = wm.convert('RGBA').resize(sz)
-    wm.putalpha(int(0.1*255))
-    left = int((wid-sz1) / 2)
-    top = int((hei-sz1) / 2)
-    save.paste(wm, (left, top), wm)
+def Watermark(save, version, form):
+    if form == 0:
+        wid, hei = save.size
+        if wid > hei:
+            sz = (int(hei * 0.8), int(hei * 0.8))
+        if hei > wid:
+            sz = (int(wid * 0.8), int(wid * 0.8))
+        sz1, sz2 = sz
+        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "")
+        wm = PImage.open(f'{dr}/Resources/logo.png')
+        wm = wm.convert('RGBA').resize(sz)
+        bands = list(wm.split())
+        if len(bands) == 4:
+            bands[3] = bands[3].point(lambda x: x*0.05)
+        wm = PImage.merge(wm.mode, bands)
+        left = int((wid-sz1) / 2)
+        top = int((hei-sz1) / 2)
+        save.paste(wm, (left, top), wm)
+        
+    if form == 1:
+        wid, hei = save.size
+        if wid > hei:
+            sz = (int(hei * 0.1), int(hei * 0.1))
+        if hei > wid:
+            sz = (int(wid * 0.1), int(wid * 0.1))
+        sz1, sz2 = sz
+        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "")
+        wm = PImage.open(f'{dr}/Resources/logo.png')
+        wm = wm.convert('RGBA').resize(sz)
+        bands = list(wm.split())
+        wm = PImage.merge(wm.mode, bands)
+        left = int(wid * 0.01)
+        top = int(hei * 0.85)
+        save.paste(wm, (left, top), wm)
+        
+    if form == 2:
+        wid, hei = save.size
+        if wid > hei:
+            sz = (int(hei * 0.1), int(hei * 0.1))
+        if hei > wid:
+            sz = (int(wid * 0.1), int(wid * 0.1))
+        sz1, sz2 = sz
+        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "")
+        wm = PImage.open(f'{dr}/Resources/logo.png')
+        wm = wm.convert('RGBA').resize(sz)
+        bands = list(wm.split())
+        wm = PImage.merge(wm.mode, bands)
+        left = int(wid * 0.89)
+        top = int(hei * 0.89)
+        save.paste(wm, (left, top), wm)
     return save

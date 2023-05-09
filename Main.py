@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #                                              #
 #            Author: Sam Bailey                #
-#        Last Revised: Apr 12, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.3.0                 #
 #                                              #
 #        AMGP Created on Mar 09, 2022          #
@@ -71,28 +71,29 @@ amgpmodules = {}
 amgpmenumodules = {}
 amgpcombomodules = {}
 
-amgpmodulenames = {-3:"AMGP_PLT",-2:"AMGP_MAP",-1:"AMGP_UTIL"}
+amgpmodulenames = {0:"AMGP_PLT",100:"AMGP_MAP",200:"AMGP_UTIL"}
 
 for module in os.listdir("Modules"):
-    if module.startswith("AMGP_") and (module.replace(".py","") not in amgpmodulenames.values()):
+    if module.startswith("AMGP_") and (module.replace(".py","") != "AMGP_UTIL"):
         strp = module.replace(".py", '')
         var = strp.replace("_", '').lower()
-        globals()[f"{var}"] = import_module(f'Modules.{strp}')
-        print(f"<startup> {strp} imported as {var}")
+        if (module.replace(".py","") not in amgpmodulenames.values()):
+            globals()[f"{var}"] = import_module(f'Modules.{strp}')
+            print(f"<startup> {strp} imported as {var}")
         tmp = globals()[f"{var}"].info()
-        if tmp['type'] == 0:
-            amgputilmodules[tmp['priority']] = globals()[f"{var}"]
+        if int(tmp['uid'][3:-4]) == 0:
+            amgputilmodules[int(tmp['uid'][4:])] = globals()[f"{var}"]
             amgputilmodules = dict(sorted(amgputilmodules.items()))
-        elif tmp['type'] == 1:
-            amgpmodules[tmp['priority']] = globals()[f"{var}"]
+        elif int(tmp['uid'][3:-4]) == 1:
+            amgpmodules[int(tmp['uid'][4:])] = globals()[f"{var}"]
             amgpmodules = dict(sorted(amgpmodules.items()))
-        elif tmp['type'] == 2:
-            amgpmenumodules[tmp['priority']] = globals()[f"{var}"]
+        elif int(tmp['uid'][3:-4]) == 2:
+            amgpmenumodules[int(tmp['uid'][4:])] = globals()[f"{var}"]
             amgpmenumodules = dict(sorted(amgpmenumodules.items()))
-        elif tmp['type'] == 3:
-            amgpcombomodules[tmp['priority']] = globals()[f"{var}"]
+        elif int(tmp['uid'][3:-4]) == 3:
+            amgpcombomodules[int(tmp['uid'][4:])] = globals()[f"{var}"]
             amgpcombomodules = dict(sorted(amgpcombomodules.items()))
-        amgpmodulenames[tmp['priority']] = f"{strp}"
+        amgpmodulenames[int(tmp['uid'][4:])] = f"{strp}"
 
 amgpmodulenames = dict(sorted(amgpmodulenames.items()))
 
@@ -125,6 +126,7 @@ area_dictionary = dict(config['areas'])
 area_dictionary = {k: tuple(map(float, v.split(", "))) for k, v in area_dictionary.items()}
 
 if len(sys.argv) > 1:
+    print("<error> False start.")
     sys.exit()
 else:
     print(f"<menu> Loaded AMGP modules: {list(amgpmodulenames.values())}")

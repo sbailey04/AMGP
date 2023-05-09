@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #            Gridded Fill Module               #
 #             Author: Sam Bailey               #
-#        Last Revised: Apr 11, 2023            #
+#        Last Revised: May 09, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -32,15 +32,16 @@ from Modules import AMGP_UTIL as amgp
 
 def info():
     return {'name':"AMGP_GRDF",
-            'priority':5,
-            'type':1}
+            'uid':"01011000"}
 
 def getFactors():
-    return {'temp_fill':6,
-            'wind_speed_fill':6,
-            'temp_advect_fill':6,
-            'relative_vorticity_fill':6,
-            'absolute_vorticity_fill':7}
+    return {'temp_fill':[6,1],
+            'wind_speed_fill':[6,1],
+            'temp_advect_fill':[6,1],
+            'relative_vorticity_fill':[6,1],
+            'absolute_vorticity_fill':[7,1],
+            'cape_fill':[6,1],
+            'cin_fill':[6,1]}
 
 def factors():
     print("<factors_grdf> 'temp_fill' - Gridded temperature coloration fill")
@@ -48,6 +49,8 @@ def factors():
     print("<factors_grdf> 'temp_advect_fill' - Gridded temperature advection")
     print("<factors_grdf> 'relative_vorticity_fill' - Gridded relative vorticity")
     print("<factors_grdf> 'absolute_vorticity_fill' - Gridded absolute vorticity (upper-air only)")
+    print("<factors_grdf> 'cape_fill' - Surface-based convective available potential energy")
+    print("<factors_grdf> 'cin_fill' - Surface-based convective inhibition")
 
 def Retrieve(Time, factors, values):
     
@@ -73,7 +76,10 @@ def Retrieve(Time, factors, values):
             temp_fill.data = Data.grd
             temp_fill.field = 'Temperature_isobaric'
             temp_fill.level = level * units.hPa
-            temp_fill.time = Data.time
+            if Data.recent:
+                temp_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                temp_fill.time = Data.time
             temp_fill.contours = list(range(-100, 101, 1)) # rangeTL, rangeTH
             temp_fill.colormap = 'coolwarm'
             temp_fill.colorbar = 'horizontal'
@@ -122,12 +128,43 @@ def Retrieve(Time, factors, values):
             absolute_vorticity_fill.data = Data.grd
             absolute_vorticity_fill.field = 'Absolute_vorticity_isobaric'
             absolute_vorticity_fill.level = level * units.hPa
-            absolute_vorticity_fill.time = Data.time
+            if Data.recent:
+                absolute_vorticity_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                absolute_vorticity_fill.time = Data.time
             absolute_vorticity_fill.contours = list(range(-80, 81, 2))
             absolute_vorticity_fill.colormap = 'PuOr_r'
             absolute_vorticity_fill.colorbar = 'horizontal'
             absolute_vorticity_fill.scale = 1e5
             partialPlotsList.append(absolute_vorticity_fill)
+            
+        if "cape_fill" in factors:
+            cape_fill = declarative.FilledContourPlot()
+            cape_fill.data = Data.grd
+            cape_fill.field = 'Convective_available_potential_energy_surface'
+            cape_fill.level = None
+            if Data.recent:
+                cape_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cape_fill.time = Data.time
+            cape_fill.contours = list(range(0, 5001, 25))
+            cape_fill.colormap = 'YlOrRd'
+            cape_fill.colorbar = 'horizontal'
+            partialPlotsList.append(cape_fill)
+        
+        if "cin_fill" in factors:
+            cin_fill = declarative.FilledContourPlot()
+            cin_fill.data = Data.grd
+            cin_fill.field = 'Convective_inhibition_surface'
+            cin_fill.level = None
+            if Data.recent:
+                cin_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cin_fill.time = Data.time
+            cin_fill.contours = list(range(-700, 1, 25))
+            cin_fill.colormap = 'OrRd_r'
+            cin_fill.colorbar = 'horizontal'
+            partialPlotsList.append(cin_fill)
             
     else:
         if "temp_fill" in factors:
@@ -135,7 +172,10 @@ def Retrieve(Time, factors, values):
             temp_fill.data = Data.grd
             temp_fill.field = 'Temperature_height_above_ground'
             temp_fill.level = 2 * units.m
-            temp_fill.time = Data.time
+            if Data.recent:
+                temp_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                temp_fill.time = Data.time
             temp_fill.contours = list(range(-68, 133, 2)) # rangeTL_F, rangeTH_F
             temp_fill.colormap = 'coolwarm'
             temp_fill.colorbar = 'horizontal'
@@ -178,11 +218,41 @@ def Retrieve(Time, factors, values):
             relative_vorticity_fill.colorbar = 'horizontal'
             relative_vorticity_fill.scale = 1e5
             partialPlotsList.append(relative_vorticity_fill)
+            
+        if "cape_fill" in factors:
+            cape_fill = declarative.FilledContourPlot()
+            cape_fill.data = Data.grd
+            cape_fill.field = 'Convective_available_potential_energy_surface'
+            cape_fill.level = None
+            if Data.recent:
+                cape_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cape_fill.time = Data.time
+            cape_fill.contours = list(range(0, 5001, 25))
+            cape_fill.colormap = 'YlOrRd'
+            cape_fill.colorbar = 'horizontal'
+            partialPlotsList.append(cape_fill)
+        
+        if "cin_fill" in factors:
+            cin_fill = declarative.FilledContourPlot()
+            cin_fill.data = Data.grd
+            cin_fill.field = 'Convective_inhibition_surface'
+            cin_fill.level = None
+            if Data.recent:
+                cin_fill.time = Data.time + timedelta(hours=values['delta'])
+            else:
+                cin_fill.time = Data.time
+            cin_fill.contours = list(range(-700, 1, 25))
+            cin_fill.colormap = 'OrRd_r'
+            cin_fill.colorbar = 'horizontal'
+            partialPlotsList.append(cin_fill)
     
     return partialPlotsList
 
 class Data(object):
     def __init__(self, Time, level, delta):
+        
+        self.recent = False
         
         if (Time.category == 'sync') or (Time.category == 'raw') or (Time.category == 'near'):
             self.time = Time.time
@@ -190,7 +260,8 @@ class Data(object):
             self.time = Time.sixtime
         
         if (Time.recentness < timedelta(days=14)):
-            self.grd = xr.open_dataset('https://thredds.ucar.edu/thredds/dodsC/grib'f'/NCEP/GFS/Global_onedeg/GFS_Global_onedeg_{self.time:%Y%m%d}_{self.time:%H%M}.grib2').metpy.parse_cf()
+            self.grd = xr.open_dataset(f'https://thredds.ucar.edu/thredds/dodsC/grib/NCEP/GFS/Global_onedeg/GFS_Global_onedeg_{self.time:%Y%m%d}_{self.time:%H%M}.grib2').metpy.parse_cf()
+            self.recent = True
         elif (self.time >= datetime(2004, 3, 2)):
             try:
                 self.grd = xr.open_dataset('https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-003-files/'f'{self.time:%Y%m/%Y%m%d}/gfs_3_{self.time:%Y%m%d_%H}00_{delta:03d}.grb2').metpy.parse_cf()
@@ -210,19 +281,19 @@ class Data(object):
             self.grd = None
         
         if level == 'surface':
-            tmpk = self.grd.Temperature_height_above_ground.metpy.sel(vertical=2*units.m, time=self.time)
-            uwind = self.grd['u-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time)
-            vwind = self.grd['v-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time)
+            tmpk = self.grd.Temperature_height_above_ground.metpy.sel(vertical=2*units.m, time=self.time + timedelta(hours=delta))
+            uwind = self.grd['u-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time + timedelta(hours=delta))
+            vwind = self.grd['v-component_of_wind_height_above_ground'].metpy.sel(vertical=10*units.m, time=self.time + timedelta(hours=delta))
             self.grd['wind_speed_height_above_ground'] = mpcalc.wind_speed(uwind, vwind)
         else:
-            tmpk = self.grd.Temperature_isobaric.metpy.sel(vertical=level*units.hPa, time=self.time)
-            uwind = self.grd['u-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time)
-            vwind = self.grd['v-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time)
+            tmpk = self.grd.Temperature_isobaric.metpy.sel(vertical=level*units.hPa, time=self.time + timedelta(hours=delta))
+            uwind = self.grd['u-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time + timedelta(hours=delta))
+            vwind = self.grd['v-component_of_wind_isobaric'].metpy.sel(vertical=level*units.hPa, time=self.time + timedelta(hours=delta))
             self.grd['wind_speed_isobaric'] = mpcalc.wind_speed(uwind, vwind)
         self.grd['relative_vorticity'] = mpcalc.vorticity(uwind, vwind)
         self.grd['temperature_advection'] = mpcalc.advection(tmpk, uwind, vwind)
-        hght_500 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time, vertical=500 * units.hPa).metpy.quantify()
-        hght_1000 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time, vertical=1000 * units.hPa).metpy.quantify()
+        hght_500 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time + timedelta(hours=delta), vertical=500 * units.hPa).metpy.quantify()
+        hght_1000 = self.grd.Geopotential_height_isobaric.metpy.sel(time=self.time + timedelta(hours=delta), vertical=1000 * units.hPa).metpy.quantify()
         self.grd['thickness_500_1000'] = (hght_500 - hght_1000).metpy.dequantify()
         
 
