@@ -30,12 +30,13 @@ from Modules import AMGP_UTIL as amgp
 def info():
   return {
           "name" : str(module_name) # module_name is equivalent to AMGP_*
-          "priority" : float(priority) # priority dictates when the module is ordered among other modules (for data modules, this dictates map layer plotting order)
-          "type" : int(module_type) # module_type tells AMGP how this module should be treated. 0 is a utility module, 1 is a data acquisition module, 2 is an input loop, 3 combines data acquisition and input loops
+          "uid" : str(id) # the id is a unique identifier for the module, consisting of 8 digits stored in string form. the first three digits denote the module number, the fourth digit denotes module type, and the last four denote module priority.
+          # priority dictates when the module is ordered among other modules (for data modules, this dictates map layer plotting order), with higher modules plotted below lower modules
+          # module type tells AMGP how this module should be treated. 0 is a utility module, 1 is a data acquisition module, 2 is an input loop, 3 combines data acquisition and input loops
          }
 
 
-# A module of type 1 or 3 must also have:
+# A module of type 1 must also have:
 def getFactors():
   return {
           str(factor_name) : int(timecode) # where factor_name is the name of the factor to plot and the timecode as defined below, for each factor
