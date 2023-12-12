@@ -1,5 +1,5 @@
-{"amgp_ver":"0.3.0",
- "type":"obs",
+{"amgp_ver":"0.4.0",
+ "type":"plt",
  "settings":{"level": "surface",
              "date": "recent",
              "delta": "0",
@@ -12,6 +12,7 @@
              "smoothing": "3",
              "projection": "custom",
              "timemode": "sync",
-             "convmode": "recent"
+             "convmode": "recent",
+             "LDS": "0"
             }
 }

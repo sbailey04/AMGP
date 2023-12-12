@@ -3,9 +3,9 @@
 #       Automated Map Generation Program       #
 #             Utilities Module                 #
 #            Author: Sam Bailey                #
-#        Last Revised: May 09, 2023            #
-#                Version 0.1.0                 #
-#             AMGP Version: 0.3.0              #
+#        Last Revised: Dec 05, 2023            #
+#                Version 0.8.0                 #
+#             AMGP Version: 0.4.0              #
 #        AMGP Created on Mar 09, 2022          #
 #                                              #
 ################################################
@@ -26,6 +26,9 @@ from PIL import ImageDraw, ImageFont, ImageFilter
 
 #--------------- START DEFINITIONS ----------------#
 
+global runtime
+runtime = datetime.utcnow()
+
 def info():
     return {'name':"AMGP_UTIL",
             'uid':"00100400"}
@@ -41,7 +44,7 @@ class Time(object):
                        1:[0, 1], # Precise to three hours - used by surface obs
                        2:[3, 4, 5, 6, 7], # Precise to six hours - used by gridded reanalysis data
                        3:[2, 16], # Precise to twelve hours - used by upper-air obs and Skew-Ts
-                       4:[], # Precise to twenty four hours
+                       4:[17], # Precise to twenty four hours
                        5:[9], # Convective outlook day 1
                        6:[10], # Convective outlook day 2
                        7:[11], # Convective outlook day 3
@@ -67,7 +70,10 @@ class Time(object):
         if splitDate[0] == 'recent':
             givenTime = currentTime
         elif splitDate[0] == 'today':
-            givenTime = datetime(currentTime.year, currentTime.month, currentTime.day, int(splitDate[1]))
+            try:
+                givenTime = datetime(currentTime.year, currentTime.month, currentTime.day, int(splitDate[1]), int(splitDate[2]))
+            except:
+                givenTime = datetime(currentTime.year, currentTime.month, currentTime.day, int(splitDate[1]))
         else:
             try:
                 givenTime = datetime(int(splitDate[0]), int(splitDate[1]), int(splitDate[2]), int(splitDate[3]), int(splitDate[4]))
@@ -87,13 +93,13 @@ class Time(object):
         
         if not rec:
             if (givenTime < datetime(1931, 1, 2)):
-                sys.exit("<error> The date you entered is out of range!")
+                ThrowError("AMGP_UTIL", 0, "The date you entered is out of range!", True, True, True)
             if (givenTime < datetime(1979, 1, 1)):
-                print("<warning> The date you entered is out of range for gridded data.")
+                ThrowError("AMGP_UTIL", 1, "The date you entered is out of range for gridded data.", True, False, False)
             if (givenTime < datetime(2003, 1, 23)):
-                print("<warning> The date you entered is out of range for convective outlooks.")
+                ThrowError("AMGP_UTIL", 1, "The date you entered is out of range for convective outlooks", True, False, False)
             if ((recentness) > timedelta(days=13)):
-                print("<warning> The date you entered is out of range for satelite scans.")
+                ThrowError("AMGP_UTIL", 1, "The date you entered is out of range for satelite scans.", True, False, False)
         
         if (timeMode == 'raw') or (timeFormat == None):
             self.category = "raw"
@@ -190,29 +196,33 @@ class Time(object):
             self.minutes = 0
         
         if timeMode == "async":
+            self.ys = f"{self.onetime.year}"
+            self.ms = f"{self.onetime.year}-{self.onetime.strftime('%m')}"
             self.ds = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}"
-            self.tsnum = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}-{currentTime.strftime('%H%M')}Z"
+            self.tsnum = f"{self.onetime.year}-{self.onetime.strftime('%m')}-{self.onetime.strftime('%d')}-{givenTime.strftime('%H%M')}Z"
             if timeFormat == 0:
                 self.category = "async-1"
-                self.tsalp = f"{self.onetime.strftime('%b')} {self.onetime.day}, {self.onetime.year} - {self.onetime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
+                self.tsalp = f"{self.onetime.strftime('%b')} {self.onetime.day}, {self.onetime.year} - {self.onetime.hour}Z to {givenTime.strftime('%b')} {givenTime.day}, {givenTime.year} - {givenTime.hour:02d}{givenTime.minute:02d}Z"
                 self.recentness = currentTime - self.onetime
             elif timeFormat == 1:
                 self.category = "async-3"
-                self.tsalp = f"{self.threetime.strftime('%b')} {self.threetime.day}, {self.threetime.year} - {self.threetime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
+                self.tsalp = f"{self.threetime.strftime('%b')} {self.threetime.day}, {self.threetime.year} - {self.threetime.hour}Z to {givenTime.strftime('%b')} {givenTime.day}, {givenTime.year} - {givenTime.hour:02d}{givenTime.minute:02d}Z"
                 self.recentness = currentTime - self.threetime
             elif timeFormat == 2:
                 self.category = "async-6"
-                self.tsalp = f"{self.sixtime.strftime('%b')} {self.sixtime.day}, {self.sixtime.year} - {self.sixtime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
+                self.tsalp = f"{self.sixtime.strftime('%b')} {self.sixtime.day}, {self.sixtime.year} - {self.sixtime.hour}Z to {givenTime.strftime('%b')} {givenTime.day}, {givenTime.year} - {givenTime.hour:02d}{givenTime.minute:02d}Z"
                 self.recentness = currentTime - self.sixtime
             elif timeFormat == 3:
                 self.category = "async-12"
-                self.tsalp = f"{self.twelvetime.strftime('%b')} {self.twelvetime.day}, {self.twelvetime.year} - {self.twelvetime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
+                self.tsalp = f"{self.twelvetime.strftime('%b')} {self.twelvetime.day}, {self.twelvetime.year} - {self.twelvetime.hour}Z to {givenTime.strftime('%b')} {givenTime.day}, {givenTime.year} - {givenTime.hour:02d}{givenTime.minute:02d}Z"
                 self.recentness = currentTime - self.twelvetime
             elif timeFormat == 4:
                 self.category = "async-24"
-                self.tsalp = f"{self.twentyfourtime.strftime('%b')} {self.twentyfourtime.day}, {self.twentyfourtime.year} - {self.twentyfourtime.hour}Z to {currentTime.strftime('%b')} {currentTime.day}, {currentTime.year} - {currentTime.hour:02d}{currentTime.minute:02d}Z"
+                self.tsalp = f"{self.twentyfourtime.strftime('%b')} {self.twentyfourtime.day}, {self.twentyfourtime.year} - {self.twentyfourtime.hour}Z to {givenTime.strftime('%b')} {givenTime.day}, {givenTime.year} - {givenTime.hour:02d}{givenTime.minute:02d}Z"
                 self.recentness = currentTime - self.twentyfourtime
         else:
+            self.ys = f"{self.time.year}"
+            self.ms = f"{self.time.year}-{self.time.strftime('%m')}"
             self.ds = f"{self.time.year}-{self.time.strftime('%m')}-{self.time.strftime('%d')}"
             self.tsnum = f"{self.time.year}-{self.time.strftime('%m')}-{self.time.strftime('%d')}-{self.time.strftime('%H%M')}Z"
             self.tsalp = f"{self.time.strftime('%b')} {self.time.day}, {self.time.year} - {self.time.hour:02d}{self.time.minute:02d}Z"
@@ -279,7 +289,7 @@ class Time(object):
                     else:
                         self.c1time = datetime(givenTime.year, givenTime.month, givenTime.day, 20, 0) - timedelta(days=1)
                 if convFormat == 6:
-                    if givenTime.hour + (givenTime.minutes / 60) > 17.5:
+                    if givenTime.hour + (givenTime.minute / 60) > 17.5:
                         self.c2time = datetime(givenTime.year, givenTime.month, givenTime.day, 17, 30)
                     elif givenTime.hour > 6:
                         self.c2time = datetime(givenTime.year, givenTime.month, givenTime.day, 6, 0)
@@ -315,6 +325,10 @@ def FromDatetime(datetimeObj, plotType=[-1], currentTimeObj=datetime.utcnow(), t
         customTimeFormat = f"{datetimeObj.year}, {datetimeObj.month}, {datetimeObj.day}, {datetimeObj.hour}, {datetimeObj.minute}"
         newTime = ParseTime(customTimeFormat, plotType, currentTimeObj, timeMode, convMode)
         return newTime
+
+def ToDatetime(time):
+    string = f"{time.year}-{time.month}-{time.day}, {time.hour}-{time.minute}-{time.second}"
+    return string
     
     
 
@@ -351,7 +365,7 @@ def setTime():
     
 def getTime():
     currentTime = datetime.utcnow()
-    print(f"<time> It is currently {currentTime}Z")
+    print(f"(AMGP_UTIL) <time> It is currently {currentTime}Z")
     return currentTime
 
 def ClearTemp():
@@ -415,3 +429,81 @@ def Watermark(save, version, form):
         top = int(hei * 0.89)
         save.paste(wm, (left, top), wm)
     return save
+
+
+def getPing(Now, Modules):
+    for module in Modules:
+        module.ping(Now)
+
+def LocalData():
+    #dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "LocalData")
+    with open(f"{os.path.dirname(os.path.realpath(__file__))}/../LDS_Directories.txt") as LDSes:
+        LDF = {}
+        n = 1
+        for line in LDSes:
+            if not line.startswith("#"):
+                dr = line.replace("\n", "")
+                LDFa, n = SearchDir(dr, n)
+                LDF = {**LDF, **LDFa}
+    return LDF
+
+def SearchDir(dir, cur_n=1, cur_LDF={}):
+    LDF = {}
+    n = cur_n
+    for res in os.scandir(dir):
+        if res.is_file():
+            if "%" in res.path:
+                sfile = res.path.split("%")
+                s2file = sfile[1].split(".")[0]
+                LDF[n] = [res.path, s2file.split("+")]
+                n += 1
+        else:
+            if "%" in res.path.split("/")[len(res.path.split("/"))-1]:
+                check = res.path.split("/")[len(res.path.split("/"))-1].split("%")
+                checks = check[1].split("+")
+                for afile in os.scandir(res.path):
+                    LDF[n] = [afile.path, checks]
+                    n += 1
+            else:
+                LDFa, non = SearchDir(res.path, n, cur_LDF | LDF)
+                LDF | LDFa
+    return cur_LDF | LDF, n
+                        
+
+def PrintLocalData(LDF):
+    dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "LocalData")
+    if len(LDF.items()):
+        print("(AMGP_UTIL) <lds> The following local data files are available:")
+        for obj in LDF.items():
+            print(f"(AMGP_UTIL) <lds> {obj[0]} - {obj[1][0].split(f'/')[len(obj[1][0].split(f'/'))-1]}")
+
+
+def ThrowError(moduleName, type, text, log=True, exit=False, echo=False):
+    if type == 0:
+        Type = "error"
+    elif type == 1:
+        Type = "warning"
+    elif type == 2:
+        Type = "alert"
+    
+    if echo:
+        print(f"(AMGP_UTIL) <{Type}> {moduleName} threw '{text}'")
+        
+    if log:
+        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Logs")
+        with open(f"{dr}/ErrorLogs/{runtime.replace(microsecond=0)}.log", "a+") as logfile:
+            logfile.write(f"{moduleName} produced code {type} at {datetime.utcnow()}: " + text + "\n")
+
+    if exit:
+        sys.exit()
+
+
+def ArcDist(lat1, lon1, lat2, lon2):
+    radius = 6378100
+    delX = math.cos(math.radians(lat2)) * math.cos(math.radians(lon2)) - math.cos(math.radians(lat1)) * math.cos(math.radians(lon1))
+    delY = math.cos(math.radians(lat2)) * math.sin(math.radians(lon2)) - math.cos(math.radians(lat1)) * math.sin(math.radians(lon1))
+    delZ = math.sin(math.radians(lat2)) - math.sin(math.radians(lat1))
+    C = math.sqrt(delX**2 + delY**2 + delZ**2)
+    angle = 2 * math.asin(C/2)
+    dist = radius * angle
+    return dist

@@ -3,9 +3,9 @@
 #       Automated Map Generation Program       #
 #           Map Generation Module              #
 #            Author: Sam Bailey                #
-#        Last Revised: May 09, 2023            #
-#                Version 0.3.0                 #
-#             AMGP Version: 0.3.0              #
+#        Last Revised: Dec 05, 2023            #
+#                Version 0.4.0                 #
+#             AMGP Version: 0.4.0              #
 #        AMGP Created on Mar 09, 2022          #
 #                                              #
 ################################################
@@ -61,6 +61,10 @@ def info():
     
 # The meat of the program
 def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, version):
+
+    #exit clause
+    if "cancel" in plotslist:
+        return {'panelSize':(0, 0),'panel':None,'timeObj':Time,'values':None, 'titlebits':None,'filltype':[0],'ver':version, 'valid':False}
     
     # Panel Preparation
     panel = declarative.MapPanel()
@@ -86,7 +90,7 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
         try:
             panel.area = f'{values["area"]}'
         except:
-            print("<error> The panel area you have put in does not exist!")
+            print("(AMGP_MAP) <error> The panel area you have put in does not exist!")
             amgpplt.inputChain()
 
     # Figuring out the data display area
@@ -142,7 +146,7 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
         if (1 in plotTypes) and (2 not in plotTypes):
             titlebits.append("Surface Obs")
         if (1 not in plotTypes) and (2 in plotTypes):
-            titlebits.append("Upper-air Obs")
+            titlebits.append(f"{level}mb Obs")
             
         if ((3 in plotTypes) or (6 in plotTypes)) and (4 not in plotTypes) and ((5 not in plotTypes) and (7 not in plotTypes)):
             titlebits.append(f"{values['delta']} Hour Model")
@@ -178,6 +182,13 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
             titlebits.append("Watches")
         if 15 in plotTypes:
             titlebits.append("Storm Reports")
+
+        #if 17 in plotTypes:
+        #    titlebits.append("Rain/Snow by Site")
+        if 18 in plotTypes:
+            titlebits.append("SnowPerMeter")
+        if 19 in plotTypes:
+            titlebits.append("SnowPerMeter^2")
         
         if Time.category == 'raw':
             title = f"{Time.tsalp} - {', '.join(titlebits)} - Raw for Time"
@@ -197,10 +208,29 @@ def Panel(Time, plotslist, values, area_dictionary, amgpmodules, titleOverride, 
     
     panel.title_fontsize = (scaledDiff**0.75) * 1.5
                             
-    return {'panelSize':(scaledDiff, scaledDiff),'panel':panel,'timeObj':Time,'values':values, 'titlebits':titlebits,'filltype':fillTypes,'ver':version}
+    return {'panelSize':(scaledDiff, scaledDiff),'panel':panel,'timeObj':Time,'values':values, 'titlebits':titlebits,'filltype':fillTypes,'ver':version, 'valid':True}
     
-def SaveMap(product, doSave, noShow, proj=''):
-    
+def SaveMap(product, doSave, noShow, proj='', altDir=False, altDirCon=False):
+
+    if doSave == "FALSE":
+        doSave = False
+    elif doSave == "TRUE":
+        doSave = True
+    if noShow == "FALSE":
+        noShow = False
+    elif noShow == "TRUE":
+        noShow = True
+    if altDir == "FALSE":
+        altDir = False
+    elif altDir == "TRUE":
+        altDir = True
+    if altDirCon == "FALSE":
+        altDirCon = False
+    elif altDirCon == "TRUE":
+        altDirCon = True
+
+    yearstamp = product['timeObj'].ys
+    monthstamp = product['timeObj'].ms
     daystamp = product['timeObj'].ds
     timestampNum = product['timeObj'].tsnum
     timestampAlp = product['timeObj'].tsalp
@@ -212,53 +242,100 @@ def SaveMap(product, doSave, noShow, proj=''):
         fill = 1
     
     nowstamp = amgp.ParseTime("recent", [-1], currentTime, "raw", "latest").tsfull
-    
-    pc = declarative.PanelContainer()
-    pc.size = product['panelSize']
-    pc.panels = [product['panel']]
-    
-    # Saving the map
-    if proj == '':
-        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
-        OldDir = os.path.isdir(f'{dr}/{daystamp}')
+
+    if product['valid'] == True:
+        pc = declarative.PanelContainer()
+        pc.size = product['panelSize']
+        pc.panels = [product['panel']]
         
-        if doSave:
+        # Saving the map
+        if (proj == '') and (altDir==False):
+            dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+            OldDirY = os.path.isdir(f'{dr}/{yearstamp}')
+            OldDirM = os.path.isdir(f'{dr}/{yearstamp}/{monthstamp}')
+            OldDirD = os.path.isdir(f'{dr}/{yearstamp}/{monthstamp}/{daystamp}')
+            
+            if doSave:
+                if type(product['titlebits']) == str:
+                    inst = product['titlebits']
+                elif type(product['titlebits']) == list:
+                    inst = ', '.join(product['titlebits'])
+    
+                if OldDirY == False:
+                    os.mkdir(f'{dr}/{yearstamp}')
+                if OldDirM == False:
+                    os.mkdir(f'{dr}/{yearstamp}/{monthstamp}')
+                if OldDirD == False:
+                    os.mkdir(f'{dr}/{yearstamp}/{monthstamp}/{daystamp}')
+                pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
+                save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
+                save = amgp.Watermark(save, version, fill)
+                save.save(f"{dr}/{yearstamp}/{monthstamp}/{daystamp}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
+                if noShow == False:
+                    save.show()
+                print("(AMGP_MAP) <run> Map successfully saved!")
+            else:
+                if os.path.isdir(f"{dr}/Temp") == False:
+                    os.mkdir(f"{dr}/Temp")
+                pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
+                save = PImage.open(f'{dr}/Temp/Temp.png').convert('RGBA')
+                save = amgp.Watermark(save, version, fill)
+                save.show()
+            amgp.ClearTemp()
+        elif (altDir==False):
+            dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+            OldDir = os.path.isdir(f'{dr}/Projects/{proj}')
+            
             if type(product['titlebits']) == str:
                 inst = product['titlebits']
             elif type(product['titlebits']) == list:
                 inst = ', '.join(product['titlebits'])
-
+    
             if OldDir == False:
-                os.mkdir(f'{dr}/{daystamp}')
+                os.mkdir(f'{dr}/Projects/{proj}')
             pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
             save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
             save = amgp.Watermark(save, version, fill)
-            save.save(f"{dr}/{daystamp}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
-            if noShow == False:
-                save.show()
-            print("<run> Map successfully saved!")
+            save.save(f"{dr}/Projects/{proj}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
+            amgp.ClearTemp()
         else:
-            if os.path.isdir(f"{dr}/Temp") == False:
-                os.mkdir(f"{dr}/Temp")
-            pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
-            save = PImage.open(f'{dr}/Temp/Temp.png').convert('RGBA')
-            save = amgp.Watermark(save, version, fill)
-            save.show()
-    else:
-        dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
-        OldDir = os.path.isdir(f'{dr}/Projects/{proj}')
-        
-        if type(product['titlebits']) == str:
-            inst = product['titlebits']
-        elif type(product['titlebits']) == list:
-            inst = ', '.join(product['titlebits'])
+            if altDirCon:
+                if type(product['titlebits']) == str:
+                    inst = product['titlebits']
+                elif type(product['titlebits']) == list:
+                    inst = ', '.join(product['titlebits'])
+                dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+                pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
+                save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
+                save = amgp.Watermark(save, version, fill)
+    
+                OldDirY = os.path.isdir(f'{proj}/{yearstamp}')
+                OldDirM = os.path.isdir(f'{proj}/{yearstamp}/{monthstamp}')
+                OldDirD = os.path.isdir(f'{proj}/{yearstamp}/{monthstamp}/{daystamp}')
 
-        if OldDir == False:
-            os.mkdir(f'{dr}/Projects/{proj}')
-        pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
-        save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
-        save = amgp.Watermark(save, version, fill)
-        save.save(f"{dr}/Projects/{proj}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
+                if OldDirY == False:
+                    os.mkdir(f'{proj}/{yearstamp}')
+                if OldDirM == False:
+                    os.mkdir(f'{proj}/{yearstamp}/{monthstamp}')
+                if OldDirD == False:
+                    os.mkdir(f'{proj}/{yearstamp}/{monthstamp}/{daystamp}')
+                
+                save.save(f"{proj}/{yearstamp}/{monthstamp}/{daystamp}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
+                amgp.ClearTemp()
+            else:
+                if type(product['titlebits']) == str:
+                    inst = product['titlebits']
+                elif type(product['titlebits']) == list:
+                    inst = ', '.join(product['titlebits'])
+                dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Maps")
+                pc.save(f"{dr}/Temp/Temp.png", dpi=int(product['values']['dpi']), bbox_inches='tight')
+                save = PImage.open(f"{dr}/Temp/Temp.png").convert('RGBA')
+                save = amgp.Watermark(save, version, fill)
+                save.save(f"{proj}/{timestampNum}; {product['values']['area']}; {inst} - {cat}; {nowstamp}.png")
+                amgp.ClearTemp()
+        
+    else:
+        amgp.ThrowError("AMGP_MAP", 2, f"Map for {product['timeObj'].ds} cancelled.", True, False, False)
 
 
 # --- End Definitions ---

@@ -3,7 +3,7 @@
 #       Automated Map Generation Program       #
 #           Multi-Mode .gif Module             #
 #            Author: Sam Bailey                #
-#        Last Revised: May 09, 2023            #
+#        Last Revised: Aug 13, 2023            #
 #                Version 0.1.0                 #
 #             AMGP Version: 0.3.0              #
 #        AMGP Created on Mar 09, 2022          #
@@ -37,6 +37,7 @@ import json
 import glob
 import contextlib
 from importlib import import_module
+import time
 
 from tkinter import *
 from tkinter import ttk
@@ -64,12 +65,19 @@ def init(pack):
     print("<menu_init> Opened the Multi-Mode Gif interface <menu_init>")
     global unpack
     unpack = pack
+    global mname
+    mname = info()["name"]
     amgp.getTime()
     imports(unpack)
     obsLoad('default')
     mmgLoad('default')
     loadings()
     multiMode()
+
+def partialInit(pack):
+    global unpack
+    unpack = pack
+    imports(unpack)
 
 def imports(unpack):
     for module in unpack['datamods'].values():
@@ -78,23 +86,24 @@ def imports(unpack):
 def multiMode():
     global loadedObs
     global loadedMMG
-    print("<menu> Input commands, or type 'help'.")
-    comm = input("<input> ")
+    print("(AMGP_MMG) <menu> Input commands, or type 'help'.")
+    comm = input("(AMGP_MMG) <input> ")
     
     command = comm.split(" ")
     
     '''if command[0] == "help":'''
     
     if command[0] == "list":
-        print("<list> Type 'time' to set and print the current time.")
-        print("<list> Type 'preset list' to list all available presets.")
-        print("<list> Type 'preset obs {name}' to load a preset from the plotting module.")
-        print("<list> Type 'preset mmg {name}' to load an MMG preset.")
-        print("<list> Type 'edit {parameter} {value}' to change the value of any parameter.")
-        print("<list> Type 'save obs {name}' to save the individual map settings as a plotting modult preset.")
-        print("<list> Type 'save mmg {name}' to save the recursion settings as an MMG preset.")
-        print("<list> Type 'run' to run with the current settings.")
-        print("<list> Type 'quit' to exit without running.")
+        print("(AMGP_MMG) <list> Type 'time' to set and print the current time.")
+        print("(AMGP_MMG) <list> Type 'preset list' to list all available presets.")
+        print("(AMGP_MMG) <list> Type 'preset obs {name}' to load a preset from the plotting module.")
+        print("(AMGP_MMG) <list> Type 'preset mmg {name}' to load an MMG preset.")
+        print("(AMGP_MMG) <list> Type 'edit {parameter} {value}' to change the value of any parameter.")
+        print("(AMGP_MMG) <list> Type 'save obs {name}' to save the individual map settings as a plotting module preset.")
+        print("(AMGP_MMG) <list> Type 'save mmg {name}' to save the recursion settings as an MMG preset.")
+        print("(AMGP_MMG) <list> Type 'run' to run with the current settings.")
+        print("(AMGP_MMG) <list> Type 'switch {module}' to change to a different menu module.")
+        print("(AMGP_MMG) <list> Type 'quit' to exit without running.")
     
     if command[0] == 'time':
         amgp.getTime()
@@ -109,25 +118,31 @@ def multiMode():
                     plotkeys.append(spi[1])
                 if spi[0] == "mmg":
                     plotkeys.append(spi[1])
-            print("<presets> Below is the list of all currently loaded presets:")
+            print("(AMGP_MMG) <presets> Below is the list of all currently loaded presets:")
             for item in plotkeys:
-                print(f"<presets> (obs) {item}")
+                print(f"(AMGP_MMG) <presets> (obs) {item}")
             for item in multikeys:
-                print(f"<presets> (mmg) {item}")
+                print(f"(AMGP_MMG) <presets> (mmg) {item}")
             multiMode()
         elif command[1] == 'obs':
-            obsLoad(command[2])
-            loadings()
+            try:
+                obsLoad(command[2])
+                loadings()
+            except:
+                print("(AMGP_MMG) <error> That is not a valid obs preset name!")
             multiMode()
         elif command[1] == 'mmg':
-            mmgLoad(command[2])
-            loadings()
+            try:
+                mmgLoad(command[2])
+                loadings()
+            except:
+                print("(AMGP_MMG) <error> That is not a valid mmg preset name!")
             multiMode()
         else:
-            print("<error> That is not a valid command!")
+            print("(AMGP_MMG) <error> That is not a valid command!")
             multiMode()
     elif command[0] == 'edit':
-        if command[1] in ["Level", "Date", "Delta", "Factors", "Area", "DPI", "Scale", "PRF", "BF", "Smooth", "Projection", "TM", "CM", "EndDate", "DeltaLoop", "TimeStep"]:
+        if command[1] in ["Level", "Date", "Delta", "Factors", "Area", "DPI", "Scale", "PRF", "BF", "Smooth", "Projection", "TM", "CM", "LDS", "EndDate", "DeltaLoop", "TimeStep"]:
             if command[1] == "Level":
                 loadedObs.update({'level':command[2]})
             if command[1] == "Date":
@@ -158,7 +173,7 @@ def multiMode():
                             if command[count] in blankFactors:
                                 blankFactors.pop(blankFactors.index(command[count]))
                             else:
-                                print("<error> That is not a valid factor to remove!")
+                                print("(AMGP_MMG) <error> That is not a valid factor to remove!")
                                 multiMode()
                         count += 1
                 else:
@@ -184,14 +199,23 @@ def multiMode():
                 loadedObs.update({'projection':command[2]})
             if command[1] == "TM":
                 if command[2] not in ["raw","sync","async","near"]:
-                    print("<error> That is not a valid value for the Time Mode!")
+                    print("(AMGP_MMG) <error> That is not a valid value for the Time Mode!")
                     multiMode()
                 loadedObs.update({'timemode':command[2]})
             if command[1] == "CM":
                 if command[2] not in ["recent","latest"]:
-                    print("<error> That is not a valid value for the Convective Mode!")
+                    print("(AMGP_MMG) <error> That is not a valid value for the Convective Mode!")
                     multiMode()
                 loadedObs.update({'convmode':command[2]})
+            if command[1] == "LDS":
+                count = 0
+                partialLDS = []
+                for item in command:
+                    if count > 1:
+                        partialLDS.append(command[count])
+                    count += 1
+                fullLDS = ", ".join(partialLDS)
+                loadedObs.update({'LDS':fullLDS})
             if command[1] == "EndDate":
                 if command[2] == 'recent':
                     loadedMMG.update({'end':command[2]})
@@ -214,15 +238,39 @@ def multiMode():
             loadings()
             multiMode()
         else:
-            print("<error> That is not a valid parameter to edit!")
+            print("(AMGP_MMG) <error> That is not a valid parameter to edit!")
             multiMode()
     elif command[0] == 'run':
-        proj = input("<run> Would you like to save these maps to a project directory? If so, type the name: ")
-        title = input("<run> Would you like to use a simplified title? [y/(n)] ")
-        saveSet("mmg", "prev")
-        saveSet("obs", "prev")
-        print("<run> Saved previous settings!")
-        looping(loadedObs, loadedMMG, proj, title)
+        try:
+            dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Batches")
+            with open(f"{dr}/{command[1]}.txt", "r") as setIn:
+                for line in setIn:
+                    batch = json.load(line)
+                    alt = input("(AMGP_MMG) <run> Would you like to save this Batch in a separate location [(y)/n]: ")
+                    if alt == 'n':
+                        proj = input("(AMGP_MMG) <run> Would you like to save these maps to a project directory? If so, type the name: ")
+                        altDir = False
+                    else:
+                        proj = input("(AMGP_MMG) <run> Give the full path you would like to save these maps to: ")
+                        altDir = True
+                    title = input("(AMGP_MMG) <run> Would you like to use a simplified title? [y/(n)] ")
+                    saveSet("mmg", "prev")
+                    saveSet("obs", "prev")
+                    print("(AMGP_MMG) <run> Saved previous settings!")
+                    for bunch in batch.values():
+                        bunchRunO = bunch["OBS"]
+                        bunchRunM = bunch["MMG"]
+                        bunchRun = {"OBS": bunchRunO, "MMG": bunchRunM}
+                        run(bunchRun, proj, title, altDir)
+        except:
+            proj = input("(AMGP_MMG) <run> Would you like to save these maps to a project directory? If so, type the name: ")
+            title = input("(AMGP_MMG) <run> Would you like to use a simplified title? [y/(n)] ")
+            saveSet("mmg", "prev")
+            saveSet("obs", "prev")
+            print("(AMGP_MMG) <run> Saved previous settings!")
+            print(loadedObs, loadedMMG)
+            totdat = {"OBS": loadedObs, "MMG": loadedMMG}
+            run(totdat, {"proj": proj, "title": title, "altDir": False, "altDirCon": False})
         loadings()
         multiMode()
     elif command[0] == 'save':
@@ -232,7 +280,7 @@ def multiMode():
         try:
             y = command[1]
         except:
-            print("<error> Please enter a module name to switch to.")
+            print("(AMGP_MMG) <error> Please enter a module name to switch to.")
             multiMode()
         if (f'AMGP_{command[1].upper()}' in unpack['modulenames'].values()) or (f'AMGP_{command[1].upper()}' in unpack['modulenames'].values()):
             for k, v in unpack['modulenames'].items():
@@ -243,10 +291,10 @@ def multiMode():
                         newMod = unpack['combomods'][k]
                     newMod.init(unpack)
                     break
-        print("<error> That is not a valid module to switch to!")
+        print("(AMGP_MMG) <error> That is not a valid module to switch to!")
         multiMode()
     elif command[0] == 'quit':
-        sys.exit("<quit> Process terminated")
+        sys.exit("(AMGP_MMG) <quit> Process terminated")
         
 
 def obsLoad(preset):
@@ -264,29 +312,30 @@ def mmgLoad(preset):
         loadedMMG = lo["settings"]
 
 def loadings():
-    print(f"<loaded> Level: {loadedObs['level']}")
-    print(f"<loaded> Date: {loadedObs['date']}")
-    print(f"<loaded> Delta: {loadedObs['delta']}")
-    print(f"<loaded> Factors: {loadedObs['factors']}")
-    print(f"<loaded> Area: {loadedObs['area']}")
-    print(f"<loaded> DPI: {loadedObs['dpi']}")
-    print(f"<loaded> Scale: {loadedObs['scale']}")
-    print(f"<loaded> PRF (Point Reduction Scale): {loadedObs['prfactor']}")
-    print(f"<loaded> BF (Barb Factor): {loadedObs['barbfactor']}")
-    print(f"<loaded> Smooth: {loadedObs['smoothing']}")
-    print(f"<loaded> Projection: {loadedObs['projection']}")
-    print(f"<loaded> TM (Time Mode): {loadedObs['timemode']}")
-    print(f"<loaded> CM (Convective Mode): {loadedObs['convmode']}")
-    print(f"<loaded> EndDate: {loadedMMG['end']}")
-    print(f"<loaded> DeltaLoop: {loadedMMG['dl']}")
-    print(f"<loaded> TimeStep: {loadedMMG['ts']}")
-    print(f"<loaded> DeltaMax: {loadedMMG['dm']}")
+    print(f"(AMGP_MMG) <loaded> Level: {loadedObs['level']}")
+    print(f"(AMGP_MMG) <loaded> Date: {loadedObs['date']}")
+    print(f"(AMGP_MMG) <loaded> Delta: {loadedObs['delta']}")
+    print(f"(AMGP_MMG) <loaded> Factors: {loadedObs['factors']}")
+    print(f"(AMGP_MMG) <loaded> Area: {loadedObs['area']}")
+    print(f"(AMGP_MMG) <loaded> DPI: {loadedObs['dpi']}")
+    print(f"(AMGP_MMG) <loaded> Scale: {loadedObs['scale']}")
+    print(f"(AMGP_MMG) <loaded> PRF (Point Reduction Scale): {loadedObs['prfactor']}")
+    print(f"(AMGP_MMG) <loaded> BF (Barb Factor): {loadedObs['barbfactor']}")
+    print(f"(AMGP_MMG) <loaded> Smooth: {loadedObs['smoothing']}")
+    print(f"(AMGP_MMG) <loaded> Projection: {loadedObs['projection']}")
+    print(f"(AMGP_MMG) <loaded> TM (Time Mode): {loadedObs['timemode']}")
+    print(f"(AMGP_MMG) <loaded> CM (Convective Mode): {loadedObs['convmode']}")
+    print(f"(AMGP_MMG) <loaded> LDS (Local Datasets): {loadedObs['LDS']}")
+    print(f"(AMGP_MMG) <loaded> EndDate: {loadedMMG['end']}")
+    print(f"(AMGP_MMG) <loaded> DeltaLoop: {loadedMMG['dl']}")
+    print(f"(AMGP_MMG) <loaded> TimeStep: {loadedMMG['ts']}")
+    print(f"(AMGP_MMG) <loaded> DeltaMax: {loadedMMG['dm']}")
     
 def saveSet(cat, name):
     dr = os.path.dirname(os.path.realpath(__file__)).replace("Modules", "Presets")
-    if cat == "obs":
-        saveState = {"level":f"{loadedObs['level']}","date":f"{loadedObs['date']}","delta":f"{loadedObs['delta']}","factors":f"{loadedObs['factors']}","area":f"{loadedObs['area']}","dpi":f"{loadedObs['dpi']}","scale":f"{loadedObs['scale']}","prfactor":f"{loadedObs['prfactor']}","barbfactor":f"{loadedObs['barbfactor']}","smoothing":f"{loadedObs['smoothing']}","projection":f"{loadedObs['projection']}","timemode":f"{loadedObs['timemode']}","convmode":f"{loadedObs['convmode']}"}
-        data = {"amgp_ver":unpack['ver'],"type":"obs","settings":saveState}
+    if cat == "plt":
+        saveState = {"level":f"{loadedObs['level']}","date":f"{loadedObs['date']}","delta":f"{loadedObs['delta']}","factors":f"{loadedObs['factors']}","area":f"{loadedObs['area']}","dpi":f"{loadedObs['dpi']}","scale":f"{loadedObs['scale']}","prfactor":f"{loadedObs['prfactor']}","barbfactor":f"{loadedObs['barbfactor']}","smoothing":f"{loadedObs['smoothing']}","projection":f"{loadedObs['projection']}","timemode":f"{loadedObs['timemode']}","convmode":f"{loadedObs['convmode']}","LDS":f"{loadedObs['LDS']}"}
+        data = {"amgp_ver":unpack['ver'],"type":"plt","settings":saveState}
 
         if os.path.isfile(f"{dr}/plot/{name}.json"):
             os.remove(f"{dr}/plot/{name}.json")
@@ -294,7 +343,7 @@ def saveSet(cat, name):
         with open(f"{dr}/plot/{name}.json", "a") as J:
             json.dump(data, J)
         
-        print(f"<save> Loaded obs settings saved to Presets/plot as preset: {name}.json")
+        print(f"(AMGP_MMG) <save> Loaded obs settings saved to Presets/plot as preset: {name}.json")
     
     if cat == "mmg":
         saveState = {"end":f"{loadedMMG['end']}","dl":f"{loadedMMG['dl']}","ts":f"{loadedMMG['ts']}","dm":f"{loadedMMG['dm']}"}
@@ -306,14 +355,21 @@ def saveSet(cat, name):
         with open(f"{dr}/mmg/{name}.json", "a") as J:
             json.dump(data, J)
             
-        print(f"<save> Loaded mmg settings saved to Presets/mmg as preset: {name}.json")
+        print(f"(AMGP_MMG) <save> Loaded mmg settings saved to Presets/mmg as preset: {name}.json")
 
 def stepCounter(ts):
     splits = ts.split(", ")
     return timedelta(days=int(splits[0]),hours=int(splits[1]),minutes=int(splits[2]))
     
 
-def looping(obs, mmg, proj, title):
+def run(totdat, extras):
+    obs = totdat["OBS"]
+    mmg = totdat["MMG"]
+    proj = extras["proj"]
+    title = extras["title"]
+    altDir = extras["altDir"]
+    altDirCon = extras["altDirCon"]
+
     startDate = amgp.ParseTime(obs['date']).time
     endDate = amgp.ParseTime(mmg['end']).time
     while startDate <= endDate:
@@ -322,12 +378,13 @@ def looping(obs, mmg, proj, title):
         while delta <= int(mmg['dm']):
             modObs = obs
             modObs['delta'] = delta
-            Time, plotslist, values = amgpplt.run(modObs, unpack['datamods'])
+            Time, plotslist, values = amgpplt.run(modObs, {"amgpmodules": unpack['datamods'], "S": True, "noShow": True, "proj": proj, "direct": False, "title": title, "altDir": altDir, "altDirCon": altDirCon})
             if title == "y":
-                amgpmap.SaveMap(amgpmap.Panel(Time, plotslist, values, unpack['customareas'], unpack['datamods'], f'{modObs["date"]} - {delta} hour forecast', unpack['ver']), True, True, proj)
+                amgpmap.SaveMap(amgpmap.Panel(Time, plotslist, values, unpack['customareas'], unpack['datamods'], f'{modObs["date"]} - {delta} hour forecast', unpack['ver']), True, True, proj, altDir, altDirCon)
             else:
-                amgpmap.SaveMap(amgpmap.Panel(Time, plotslist, values, unpack['customareas'], unpack['datamods'], '', unpack['ver']), True, True, proj)
-            print(f"<run> Made a map for {startDate.year}, {startDate.month}, {startDate.day}, {startDate.hour}, {startDate.minute} + {delta}")
+                amgpmap.SaveMap(amgpmap.Panel(Time, plotslist, values, unpack['customareas'], unpack['datamods'], '', unpack['ver']), True, True, proj, altDir, altDirCon)
+            if "cancel" not in plotslist:
+                print(f"(AMGP_MMG) <run> Made a map for {startDate.year}, {startDate.month}, {startDate.day}, {startDate.hour}, {startDate.minute} + {delta}")
             if int(mmg['dl']) != 0:
                 delta = delta + int(mmg['dl'])
             else:
